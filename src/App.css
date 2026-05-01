@@ -111,6 +111,7 @@
 .primary-action,
 .icon-action,
 .lesson-node,
+.tree-node,
 .answer-option,
 .sound-button,
 .flashcard,
@@ -323,10 +324,16 @@
 }
 
 .learn-grid {
-  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+  grid-template-columns: 1fr;
   grid-template-areas:
-    'mission mission'
-    'path lesson';
+    'mission'
+    'path';
+}
+
+.lesson-active-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
 }
 
 .mission-band {
@@ -466,16 +473,25 @@
   min-height: 118px;
   margin-left: 0;
   transform: translate(var(--branch-x, 0), var(--branch-y, 0));
-  grid-template-columns: 1fr;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   text-align: center;
-  border-radius: 999px;
-  padding: 14px 12px;
+  border-radius: 20px;
+  padding: 16px 12px;
   background:
     radial-gradient(circle at 50% 16%, rgba(255, 255, 255, 0.14), transparent 32%),
     #151820;
   border: 2px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.2);
+  color: #fffaf4;
+}
+
+.tree-node span {
+  font-weight: 800;
+  font-size: 15px;
 }
 
 .tree-node::before {
@@ -592,10 +608,6 @@
 }
 
 .lesson-panel {
-  grid-area: lesson;
-  align-self: start;
-  position: sticky;
-  top: 24px;
   display: grid;
   gap: 18px;
   padding: 20px;
@@ -2234,7 +2246,6 @@ select:focus-visible {
   .learn-grid {
     grid-template-areas:
       'mission'
-      'lesson'
       'path';
   }
 

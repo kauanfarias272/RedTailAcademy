@@ -126,6 +126,7 @@ const practiceModes: Array<{ id: PracticeMode; label: string; icon: typeof Layer
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('learn')
+  const [isLessonActive, setIsLessonActive] = useState(false)
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('cards')
   const [selectedLessonId, setSelectedLessonId] = useState(lessons[0].id)
   const [lessonStep, setLessonStep] = useState(0)
@@ -302,12 +303,13 @@ function App() {
     setQuizChoice('')
   }
 
-  function selectLesson(lessonId: string) {
+  function startLesson(lessonId: string) {
     if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
     setIsAutoAdvancing(false)
     setLessonStep(0)
     setQuizChoice('')
     setSelectedLessonId(lessonId)
+    setIsLessonActive(true)
   }
 
   function advanceLessonFlow() {
@@ -321,9 +323,12 @@ function App() {
     }
 
     completeLesson(selectedLesson)
+    setIsLessonActive(false)
     const nextLessonId = getNextLessonId(selectedLesson.id)
-  if (nextLessonId) {
-      selectLesson(nextLessonId)
+    if (nextLessonId) {
+      setSelectedLessonId(nextLessonId)
+      setLessonStep(0)
+      setQuizChoice('')
       return
     }
 
@@ -669,7 +674,9 @@ function App() {
             isAutoAdvancing={isAutoAdvancing}
             options={options}
             progress={progress}
-            onSelectLesson={selectLesson}
+            isLessonActive={isLessonActive}
+            onSelectLesson={startLesson}
+            onCloseLesson={() => setIsLessonActive(false)}
             onChoose={chooseQuizAnswer}
             onSpeak={speak}
             onAdvanceNow={advanceLessonFlow}
@@ -886,7 +893,9 @@ function LearnView({
   isAutoAdvancing,
   options,
   progress,
+  isLessonActive,
   onSelectLesson,
+  onCloseLesson,
   onChoose,
   onSpeak,
   onAdvanceNow,
@@ -900,7 +909,9 @@ function LearnView({
   isAutoAdvancing: boolean
   options: string[]
   progress: LearningProgress
+  isLessonActive: boolean
   onSelectLesson: (lessonId: string) => void
+  onCloseLesson: () => void
   onChoose: (choice: string) => void
   onSpeak: (text: string) => void
   onAdvanceNow: () => void
@@ -910,6 +921,83 @@ function LearnView({
     const unitLessons = lessons.filter((lesson) => lesson.unitId === unitId)
     const done = unitLessons.filter((lesson) => progress.completedLessons.includes(lesson.id)).length
     return Math.round((done / unitLessons.length) * 100)
+  }
+
+  if (isLessonActive) {
+    return (
+      <div className="lesson-active-layout">
+        <section className="lesson-panel">
+          <div className="lesson-panel-header">
+            <div>
+              <p className="eyebrow">{selectedLesson.focus}</p>
+              <h2>{selectedLesson.title}</h2>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <span className="pill">{selectedLesson.minutes} min</span>
+              <button className="icon-action" type="button" onClick={onCloseLesson} title="Sair da licao">
+                <Undo2 size={18} />
+              </button>
+            </div>
+          </div>
+
+          <div className="lesson-progress">
+            {selectedLesson.phrases.map((item, index) => (
+              <span
+                className={index <= stepIndex ? 'active' : ''}
+                key={item.id}
+                aria-label={`Etapa ${index + 1} de ${stepTotal}`}
+              ></span>
+            ))}
+          </div>
+
+          <div className="phrase-stage">
+            <button className="sound-button" type="button" onClick={() => onSpeak(phrase.hanzi)} title="Ouvir frase">
+              <Volume2 size={24} />
+            </button>
+            <div>
+              <strong>{phrase.hanzi}</strong>
+              <span>{phrase.pinyin}</span>
+              <p>{phrase.literal}</p>
+            </div>
+          </div>
+
+          <div className="quiz-block">
+            <p className="eyebrow">Escolha a traducao</p>
+            <div className="answer-grid">
+              {options.map((option) => (
+                <button
+                  className={[
+                    'answer-option',
+                    quizChoice === option ? 'selected' : '',
+                    quizChoice === option && option === phrase.portuguese ? 'correct' : '',
+                    quizChoice === option && option !== phrase.portuguese ? 'wrong' : '',
+                  ].join(' ')}
+                  key={option}
+                  type="button"
+                  onClick={() => onChoose(option)}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            <p className={isCorrect ? 'feedback good' : 'feedback'}>
+              {isCorrect && isAutoAdvancing ? 'Correto. Avancando automaticamente...' : quizChoice ? phrase.note : ' '}
+            </p>
+          </div>
+
+          <div className="lesson-footer">
+            <div>
+              <span>Padrao de tons</span>
+              <strong>{phrase.tonePattern}</strong>
+            </div>
+            <button className="primary-action" type="button" disabled={!isCorrect} onClick={onAdvanceNow}>
+              {stepIndex + 1 === stepTotal ? 'Concluir' : 'Proxima'}
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </section>
+      </div>
+    )
   }
 
   return (
@@ -948,11 +1036,10 @@ function LearnView({
                   return (
                     <button
                       className={[
-                        'lesson-node',
                         'tree-node',
                         selectedLessonId === lesson.id ? 'active' : '',
                         completed ? 'complete' : '',
-                      ].join(' ')}
+                      ].filter(Boolean).join(' ')}
                       key={lesson.id}
                       type="button"
                       onClick={() => onSelectLesson(lesson.id)}
@@ -978,72 +1065,6 @@ function LearnView({
             <strong>HSK 2</strong>
             <small>libera com HSK 1 completo</small>
           </div>
-        </div>
-      </section>
-
-      <section className="lesson-panel">
-        <div className="lesson-panel-header">
-          <div>
-            <p className="eyebrow">{selectedLesson.focus}</p>
-            <h2>{selectedLesson.title}</h2>
-          </div>
-          <span className="pill">{selectedLesson.minutes} min</span>
-        </div>
-
-        <div className="lesson-progress">
-          {selectedLesson.phrases.map((item, index) => (
-            <span
-              className={index <= stepIndex ? 'active' : ''}
-              key={item.id}
-              aria-label={`Etapa ${index + 1} de ${stepTotal}`}
-            ></span>
-          ))}
-        </div>
-
-        <div className="phrase-stage">
-          <button className="sound-button" type="button" onClick={() => onSpeak(phrase.hanzi)} title="Ouvir frase">
-            <Volume2 size={24} />
-          </button>
-          <div>
-            <strong>{phrase.hanzi}</strong>
-            <span>{phrase.pinyin}</span>
-            <p>{phrase.literal}</p>
-          </div>
-        </div>
-
-        <div className="quiz-block">
-          <p className="eyebrow">Escolha a traducao</p>
-          <div className="answer-grid">
-            {options.map((option) => (
-              <button
-                className={[
-                  'answer-option',
-                  quizChoice === option ? 'selected' : '',
-                  quizChoice === option && option === phrase.portuguese ? 'correct' : '',
-                  quizChoice === option && option !== phrase.portuguese ? 'wrong' : '',
-                ].join(' ')}
-                key={option}
-                type="button"
-                onClick={() => onChoose(option)}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-          <p className={isCorrect ? 'feedback good' : 'feedback'}>
-            {isCorrect && isAutoAdvancing ? 'Correto. Avancando automaticamente...' : quizChoice ? phrase.note : ' '}
-          </p>
-        </div>
-
-        <div className="lesson-footer">
-          <div>
-            <span>Padrao de tons</span>
-            <strong>{phrase.tonePattern}</strong>
-          </div>
-          <button className="primary-action" type="button" disabled={!isCorrect} onClick={onAdvanceNow}>
-            {stepIndex + 1 === stepTotal ? 'Concluir' : 'Proxima'}
-            <ChevronRight size={18} />
-          </button>
         </div>
       </section>
     </div>
