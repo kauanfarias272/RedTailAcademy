@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">RedTail Academy</string>
+    <string name="title_activity_main">RedTail Academy</string>
+    <string name="package_name">app.redtail.academy</string>
+    <string name="custom_url_scheme">app.redtail.academy</string>
+</resources>
