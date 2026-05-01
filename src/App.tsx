@@ -65,6 +65,7 @@ import { MascotWidget } from './MascotWidget'
 type Tab = 'learn' | 'practice' | 'clips' | 'mascot' | 'profile'
 type PracticeMode = 'cards' | 'speak' | 'write'
 type Difficulty = 'hard' | 'good' | 'easy'
+type MicState = 'idle' | 'starting' | 'listening' | 'processing' | 'success' | 'fail' | 'error'
 type MandarinTtsPlugin = {
   speak(options: { text: string; rate?: number }): Promise<{ spoken: boolean }>
   stop(): Promise<void>
@@ -155,6 +156,9 @@ function App() {
   const [clipUrl, setClipUrl] = useState('')
   const [clipTheme, setClipTheme] = useState('pronuncia')
   const [transcript, setTranscript] = useState('')
+  const [micState, setMicState] = useState<MicState>('idle')
+  const [lastSpeechExpected, setLastSpeechExpected] = useState('')
+  const [lastSpeechMatched, setLastSpeechMatched] = useState(false)
   const [mandarinVoice, setMandarinVoice] = useState<SpeechSynthesisVoice | null>(null)
   const [now, setNow] = useState(0)
   const autoAdvanceTimer = useRef<number | null>(null)
@@ -462,6 +466,9 @@ function App() {
   function handleSpeechResult(expected: string, result: string) {
     const matched = isSpeechCloseEnough(result, expected)
     setTranscript(result)
+    setLastSpeechExpected(expected)
+    setLastSpeechMatched(matched)
+    setMicState(matched ? 'success' : 'fail')
     setProgress((current) => {
       const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
       const baseProgress: LearningProgress = {
@@ -490,18 +497,26 @@ function App() {
   }
 
   async function recordSpeech(expected: string) {
+    setLastSpeechExpected(expected)
+    setLastSpeechMatched(false)
+    setTranscript('')
+    setMicState('starting')
+
     if (Capacitor.isNativePlatform()) {
       try {
+        setMicState('listening')
         setTranscript('Ouvindo... fale depois do sinal do Android.')
         const result = await MandarinSpeech.listen({
           language: 'zh-CN',
           prompt: 'Repita a frase em mandarim',
         })
+        setMicState('processing')
         handleSpeechResult(expected, result.transcript)
         return
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Microfone nao retornou audio.'
         setTranscript(`${message} Tente de novo em um lugar silencioso.`)
+        setMicState('error')
         return
       }
     }
@@ -513,6 +528,8 @@ function App() {
       start: () => void
       onresult: (event: { results: { 0: { transcript: string } }[] }) => void
       onerror: (event?: { error?: string }) => void
+      onend?: () => void
+      onstart?: () => void
     }
 
     const browserWindow = window as Window & {
@@ -523,6 +540,7 @@ function App() {
 
     if (!Recognition) {
       setTranscript('Reconhecimento de voz indisponivel neste navegador. No Android, use o APK novo com microfone nativo.')
+      setMicState('error')
       return
     }
 
@@ -530,13 +548,27 @@ function App() {
     recognition.lang = 'zh-CN'
     recognition.interimResults = false
     recognition.maxAlternatives = 1
+    recognition.onstart = () => {
+      setMicState('listening')
+      setTranscript('Estamos captando o microfone... fale agora.')
+    }
     recognition.onresult = (event) => {
       const result = event.results[0][0].transcript
+      setMicState('processing')
       handleSpeechResult(expected, result)
     }
-    recognition.onerror = (event) =>
+    recognition.onerror = (event) => {
+      setMicState('error')
       setTranscript(event?.error === 'not-allowed' ? 'Permita o microfone para gravar.' : 'Microfone nao retornou audio claro. Tente de novo.')
+    }
     recognition.start()
+  }
+
+  function resetSpeechState() {
+    setTranscript('')
+    setMicState('idle')
+    setLastSpeechExpected('')
+    setLastSpeechMatched(false)
   }
 
   function resolveReviewMistake(mistake: LearningMistake) {
@@ -771,6 +803,21 @@ function App() {
             <h1>{activeTitle(activeTab)}</h1>
           </div>
           <div className="topbar-actions">
+            <div className="hud-pill hud-coins" title={`Voce tem ${progress.coins} moedas. Gaste em Freeze Streak (${FREEZE_COST}) ou troca de evolucao do mascote (${MASCOT_SWITCH_COST}).`}>
+              <Target size={16} />
+              <strong>{progress.coins}</strong>
+              <span>moedas</span>
+            </div>
+            <div className="hud-pill hud-streak" title="Sua sequencia de dias estudando">
+              <Flame size={16} />
+              <strong>{progress.streak}</strong>
+              <span>streak</span>
+            </div>
+            <div className="hud-pill hud-freeze" title="Freeze streaks disponiveis (compre na aba Perfil)">
+              <ShieldCheck size={16} />
+              <strong>{progress.freezeStreaks}</strong>
+              <span>freeze</span>
+            </div>
             <div className="progress-ring" style={{ '--progress': `${levelProgress}%` } as CSSProperties}>
               <span>{levelProgress}%</span>
             </div>
@@ -812,12 +859,16 @@ function App() {
             progress={progress}
             openMistakes={unresolvedMistakes}
             transcript={transcript}
+            micState={micState}
+            lastSpeechExpected={lastSpeechExpected}
+            lastSpeechMatched={lastSpeechMatched}
             onFlip={() => setIsCardFlipped((current) => !current)}
             onReview={reviewCard}
             onResolveMistake={resolveReviewMistake}
             onMissMistake={missReviewMistake}
             onRecord={recordSpeech}
             onCompleteSpeakingSession={completeSpeakingSession}
+            onResetSpeech={resetSpeechState}
             onPracticeMistake={recordWritingMistake}
             onCompleteWritingPractice={completeWritingPractice}
             onSpeak={speak}
@@ -1200,12 +1251,16 @@ function PracticeView({
   progress,
   openMistakes,
   transcript,
+  micState,
+  lastSpeechExpected,
+  lastSpeechMatched,
   onFlip,
   onReview,
   onResolveMistake,
   onMissMistake,
   onRecord,
   onCompleteSpeakingSession,
+  onResetSpeech,
   onPracticeMistake,
   onCompleteWritingPractice,
   onSpeak,
@@ -1218,12 +1273,16 @@ function PracticeView({
   progress: LearningProgress
   openMistakes: LearningMistake[]
   transcript: string
+  micState: MicState
+  lastSpeechExpected: string
+  lastSpeechMatched: boolean
   onFlip: () => void
   onReview: (difficulty: Difficulty) => void
   onResolveMistake: (mistake: LearningMistake) => void
   onMissMistake: (mistake: LearningMistake, answer: string) => void
   onRecord: (expected: string) => void
   onCompleteSpeakingSession: () => void
+  onResetSpeech: () => void
   onPracticeMistake: (character: WritingCharacter, reason: string) => void
   onCompleteWritingPractice: (character: WritingCharacter) => void
   onSpeak: (text: string) => void
@@ -1265,11 +1324,16 @@ function PracticeView({
       {mode === 'speak' && (
         <SpeakView
           transcript={transcript}
+          micState={micState}
+          lastExpected={lastSpeechExpected}
+          lastMatched={lastSpeechMatched}
           onRecord={onRecord}
           onSpeak={onSpeak}
           onCompleteSession={onCompleteSpeakingSession}
+          onReset={onResetSpeech}
         />
       )}
+      {/** SpeakView consumes mic feedback: idle / starting / listening / processing / success / fail / error */}
 
       {mode === 'write' && (
         <WritingView
@@ -1471,15 +1535,40 @@ function MistakeReviewPanel({
 
 function SpeakView({
   transcript,
+  micState,
+  lastExpected,
+  lastMatched,
   onRecord,
   onSpeak,
   onCompleteSession,
+  onReset,
 }: {
   transcript: string
+  micState: MicState
+  lastExpected: string
+  lastMatched: boolean
   onRecord: (expected: string) => void
   onSpeak: (text: string) => void
   onCompleteSession: () => void
+  onReset: () => void
 }) {
+  const shadowPhrase = '我要一杯水'
+  const isListening = micState === 'listening' || micState === 'starting'
+  const isBusy = isListening || micState === 'processing'
+  const showFeedback = micState === 'success' || micState === 'fail' || micState === 'error'
+
+  const micLabel = (() => {
+    switch (micState) {
+      case 'starting': return 'Preparando microfone...'
+      case 'listening': return 'Captando voz... fale agora!'
+      case 'processing': return 'Analisando o que voce disse...'
+      case 'success': return 'Boa! Reconhecemos o que voce falou.'
+      case 'fail': return 'Quase la — nao bateu com a frase. Tente de novo.'
+      case 'error': return 'Microfone nao retornou audio. Permita acesso e tente novamente.'
+      default: return 'Toque em Gravar para comecar a captar.'
+    }
+  })()
+
   return (
     <div className="speak-grid">
       <section className="tone-board">
@@ -1490,7 +1579,7 @@ function SpeakView({
           </div>
           <ShieldCheck size={26} />
         </div>
-        <div className="tone-wave" aria-hidden="true">
+        <div className={`tone-wave ${isListening ? 'tone-wave-active' : ''}`} aria-hidden="true">
           <span></span>
           <span></span>
           <span></span>
@@ -1504,9 +1593,20 @@ function SpeakView({
                 <span>{drill.pinyin}</span>
                 <small>{drill.focus}</small>
               </div>
-              <button className="icon-action" type="button" onClick={() => onSpeak(drill.hanzi)} title="Ouvir">
-                <Play size={18} />
-              </button>
+              <div className="tone-card-actions">
+                <button className="icon-action" type="button" onClick={() => onSpeak(drill.hanzi)} title="Ouvir">
+                  <Play size={18} />
+                </button>
+                <button
+                  className="icon-action"
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => onRecord(drill.hanzi)}
+                  title={`Gravar ${drill.hanzi}`}
+                >
+                  <Mic size={18} />
+                </button>
+              </div>
             </article>
           ))}
         </div>
@@ -1514,26 +1614,61 @@ function SpeakView({
 
       <section className="shadow-panel">
         <p className="eyebrow">Shadowing</p>
-        <h2>我要一杯水</h2>
+        <h2>{shadowPhrase}</h2>
         <span>wǒ yào yì bēi shuǐ</span>
         <p>eu quero um copo de agua</p>
+
+        <div className={`mic-status mic-${micState}`} role="status" aria-live="polite">
+          <span className="mic-pulse" aria-hidden="true">
+            <Mic size={18} />
+          </span>
+          <span>{micLabel}</span>
+        </div>
+
         <div className="shadow-actions">
-          <button type="button" onClick={() => onSpeak('我要一杯水')}>
+          <button type="button" onClick={() => onSpeak(shadowPhrase)} disabled={isBusy}>
             <Volume2 size={18} />
             Ouvir
           </button>
-          <button type="button" onClick={() => onRecord('我要一杯水')}>
+          <button
+            type="button"
+            className={isListening ? 'mic-button mic-button-listening' : 'mic-button'}
+            onClick={() => onRecord(shadowPhrase)}
+            disabled={isBusy}
+          >
             <Mic size={18} />
-            Gravar
+            {isListening ? 'Captando...' : 'Gravar'}
           </button>
-          <button type="button" onClick={onCompleteSession}>
+          <button type="button" onClick={onCompleteSession} disabled={isBusy}>
             <Star size={18} />
-            Marcar
+            Marcar +5
           </button>
         </div>
-        <div className="transcript-box">
-          <span>Resultado</span>
+
+        <div className={`transcript-box transcript-${micState}`}>
+          <span>Resultado {lastExpected ? `(esperado: ${lastExpected})` : ''}</span>
           <strong>{transcript || 'Aguardando voz'}</strong>
+          {showFeedback && (
+            <div className="mic-result-actions">
+              {lastMatched ? (
+                <button type="button" onClick={onReset} className="primary-action mic-next">
+                  <CheckCircle2 size={16} />
+                  Continuar treinando
+                </button>
+              ) : (
+                <>
+                  <button type="button" onClick={() => lastExpected && onRecord(lastExpected)} disabled={!lastExpected}>
+                    <Mic size={16} />
+                    Tentar de novo
+                  </button>
+                  <button type="button" onClick={() => lastExpected && onSpeak(lastExpected)} disabled={!lastExpected}>
+                    <Volume2 size={16} />
+                    Ouvir referencia
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </section>
     </div>
@@ -1781,17 +1916,18 @@ function validateWritingAttempt(
     return { ok: false, message: `Meta: ${character.strokes} tracos principais.` }
   }
 
-  const strokeTolerance = character.strokes >= 6 ? 2 : 1
+  // Tighter stroke count: 0 tolerance for short chars, 1 for medium, 2 only for very complex.
+  const strokeTolerance = character.strokes >= 8 ? 2 : character.strokes >= 5 ? 1 : 0
   if (Math.abs(strokesDrawn - character.strokes) > strokeTolerance) {
     return {
       ok: false,
-      message: `Voce fez ${strokesDrawn} tracos. Esse hanzi aceita perto de ${character.strokes}; tente chegar mais proximo.`,
+      message: `Voce fez ${strokesDrawn} traco(s) — esse hanzi tem ${character.strokes}. Refaca contando cada movimento.`,
     }
   }
 
   const points = strokes.flat()
-  if (points.length < Math.max(6, character.strokes * 3)) {
-    return { ok: false, message: 'Trace os movimentos completos antes de validar.' }
+  if (points.length < Math.max(12, character.strokes * 6)) {
+    return { ok: false, message: 'Trace os movimentos completos antes de validar — esta muito curto.' }
   }
 
   const bounds = getPointBounds(points)
@@ -1800,19 +1936,32 @@ function validateWritingAttempt(
   const pathLength = strokes.reduce((total, stroke) => total + getPathLength(stroke), 0)
   const template = writingValidationTemplates[character.id] ?? {
     cells: ['1-0', '0-1', '1-1', '2-1', '1-2'],
-    minWidthRatio: 0.3,
-    minHeightRatio: 0.34,
-    minPathLength: WRITING_MIN_PATH * 0.65,
+    minWidthRatio: 0.42,
+    minHeightRatio: 0.46,
+    minPathLength: WRITING_MIN_PATH,
   }
 
   if (widthRatio < template.minWidthRatio || heightRatio < template.minHeightRatio) {
-    return { ok: false, message: 'A forma ficou pequena demais ou concentrada. Use mais do grid do hanzi.' }
+    return { ok: false, message: 'A forma ficou pequena ou concentrada. Use mais espaco do grid do hanzi.' }
   }
 
   if (pathLength < template.minPathLength) {
-    return { ok: false, message: 'O caminho desenhado ficou curto demais para esse caractere.' }
+    return { ok: false, message: 'O caminho ficou curto demais. Trace as linhas inteiras do caractere.' }
   }
 
+  // Cell coverage with a finer 4x4 grid for stricter shape match.
+  const touchedFineCells = new Set(
+    points.map((point) => {
+      const col = Math.min(3, Math.max(0, Math.floor((point.x / Math.max(1, canvasSize.width)) * 4)))
+      const row = Math.min(3, Math.max(0, Math.floor((point.y / Math.max(1, canvasSize.height)) * 4)))
+      return `${col}-${row}`
+    }),
+  )
+  if (touchedFineCells.size < Math.max(6, character.strokes + 2)) {
+    return { ok: false, message: 'A forma cobriu poucas areas do hanzi. Espalhe o traco seguindo a sombra.' }
+  }
+
+  // Original 3x3 template check, now stricter (75% required).
   const touchedCells = new Set(
     points.map((point) => {
       const col = Math.min(2, Math.max(0, Math.floor((point.x / Math.max(1, canvasSize.width)) * 3)))
@@ -1821,10 +1970,24 @@ function validateWritingAttempt(
     }),
   )
   const hitCells = template.cells.filter((cell) => touchedCells.has(cell)).length
-  const neededCells = Math.max(2, Math.ceil(template.cells.length * 0.45))
+  const neededCells = Math.max(3, Math.ceil(template.cells.length * 0.75))
 
   if (hitCells < neededCells) {
-    return { ok: false, message: 'A forma ficou muito fora do hanzi. Siga a sombra, mas nao precisa ficar perfeito.' }
+    return { ok: false, message: 'A forma nao bateu com a estrutura do hanzi. Siga a sombra como guia.' }
+  }
+
+  // Structural directional check: require strokes that go horizontal AND vertical.
+  let hasHorizontal = false
+  let hasVertical = false
+  strokes.forEach((stroke) => {
+    if (stroke.length < 2) return
+    const sBounds = getPointBounds(stroke)
+    if (sBounds.width > canvasSize.width * 0.18 && sBounds.height < canvasSize.height * 0.12) hasHorizontal = true
+    if (sBounds.height > canvasSize.height * 0.22 && sBounds.width < canvasSize.width * 0.18) hasVertical = true
+  })
+  // Most hanzi require at least one strong horizontal or vertical stroke.
+  if (character.strokes >= 3 && !hasHorizontal && !hasVertical) {
+    return { ok: false, message: 'Os tracos parecem soltos demais. Esse hanzi exige linhas retas claras.' }
   }
 
   return { ok: true, message: 'Hanzi validado.' }
