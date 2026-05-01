@@ -59,20 +59,24 @@ import {
 import { checkInactivity, getStageAccessories, onLessonComplete, onCardReview } from './mascot'
 import { MascotWidget } from './MascotWidget'
 
-type Tab = 'learn' | 'cards' | 'speak' | 'write' | 'clips' | 'mascot' | 'profile'
+type Tab = 'learn' | 'practice' | 'clips' | 'mascot' | 'profile'
+type PracticeMode = 'cards' | 'speak' | 'write'
 type Difficulty = 'hard' | 'good' | 'easy'
 type MandarinTtsPlugin = {
   speak(options: { text: string; rate?: number }): Promise<{ spoken: boolean }>
   stop(): Promise<void>
 }
+type MandarinSpeechPlugin = {
+  listen(options?: { language?: string; prompt?: string }): Promise<{ transcript: string; matches: string[] }>
+  stop(): Promise<void>
+}
 
 const MandarinTts = registerPlugin<MandarinTtsPlugin>('MandarinTts')
+const MandarinSpeech = registerPlugin<MandarinSpeechPlugin>('MandarinSpeech')
 
 const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen }> = [
-  { id: 'learn', label: 'Aprender', icon: BookOpen },
-  { id: 'cards', label: 'Cartoes', icon: Layers3 },
-  { id: 'speak', label: 'Fala', icon: Mic },
-  { id: 'write', label: 'Escrita', icon: Brush },
+  { id: 'learn', label: 'Trilha', icon: BookOpen },
+  { id: 'practice', label: 'Treino', icon: Layers3 },
   { id: 'clips', label: 'Estudar', icon: Headphones },
   { id: 'mascot', label: 'Koi', icon: Fish },
   { id: 'profile', label: 'Perfil', icon: Trophy },
@@ -106,16 +110,23 @@ type WritingValidationTemplate = {
 }
 
 const writingValidationTemplates: Record<string, WritingValidationTemplate> = {
-  ren: { cells: ['1-0', '1-1', '0-2', '2-2'], minWidthRatio: 0.36, minHeightRatio: 0.5, minPathLength: 180 },
-  kou: { cells: ['0-0', '1-0', '2-0', '0-1', '2-1', '0-2', '1-2', '2-2'], minWidthRatio: 0.42, minHeightRatio: 0.42, minPathLength: 220 },
-  ni: { cells: ['0-0', '0-1', '1-0', '2-0', '1-1', '2-1', '1-2', '2-2'], minWidthRatio: 0.48, minHeightRatio: 0.56, minPathLength: 360 },
-  hao: { cells: ['0-0', '0-1', '0-2', '1-1', '2-0', '2-1', '1-2', '2-2'], minWidthRatio: 0.5, minHeightRatio: 0.5, minPathLength: 320 },
-  zhong: { cells: ['0-0', '1-0', '2-0', '0-1', '1-1', '2-1', '1-2'], minWidthRatio: 0.4, minHeightRatio: 0.58, minPathLength: 260 },
-  shui: { cells: ['1-0', '1-1', '0-2', '1-2', '2-2'], minWidthRatio: 0.48, minHeightRatio: 0.56, minPathLength: 260 },
+  ren: { cells: ['1-0', '1-1', '0-2', '2-2'], minWidthRatio: 0.26, minHeightRatio: 0.36, minPathLength: 105 },
+  kou: { cells: ['0-0', '1-0', '2-0', '0-1', '2-1', '0-2', '1-2', '2-2'], minWidthRatio: 0.3, minHeightRatio: 0.3, minPathLength: 130 },
+  ni: { cells: ['0-0', '0-1', '1-0', '2-0', '1-1', '2-1', '1-2', '2-2'], minWidthRatio: 0.34, minHeightRatio: 0.38, minPathLength: 205 },
+  hao: { cells: ['0-0', '0-1', '0-2', '1-1', '2-0', '2-1', '1-2', '2-2'], minWidthRatio: 0.34, minHeightRatio: 0.36, minPathLength: 190 },
+  zhong: { cells: ['0-0', '1-0', '2-0', '0-1', '1-1', '2-1', '1-2'], minWidthRatio: 0.28, minHeightRatio: 0.4, minPathLength: 150 },
+  shui: { cells: ['1-0', '1-1', '0-2', '1-2', '2-2'], minWidthRatio: 0.34, minHeightRatio: 0.38, minPathLength: 150 },
 }
+
+const practiceModes: Array<{ id: PracticeMode; label: string; icon: typeof Layers3 }> = [
+  { id: 'cards', label: 'Cartoes', icon: Layers3 },
+  { id: 'speak', label: 'Fala', icon: Mic },
+  { id: 'write', label: 'Escrita', icon: Brush },
+]
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('learn')
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>('cards')
   const [selectedLessonId, setSelectedLessonId] = useState(lessons[0].id)
   const [lessonStep, setLessonStep] = useState(0)
   const [quizChoice, setQuizChoice] = useState('')
@@ -125,7 +136,6 @@ function App() {
   const [clipUrl, setClipUrl] = useState('')
   const [clipTheme, setClipTheme] = useState('pronuncia')
   const [transcript, setTranscript] = useState('')
-  const [audioStatus, setAudioStatus] = useState('Som pronto')
   const [mandarinVoice, setMandarinVoice] = useState<SpeechSynthesisVoice | null>(null)
   const [now, setNow] = useState(0)
   const autoAdvanceTimer = useRef<number | null>(null)
@@ -149,7 +159,6 @@ function App() {
         voices.find((item) => item.lang.toLowerCase().startsWith('zh')) ??
         null
       setMandarinVoice(voice)
-      setAudioStatus(voice ? `Voz: ${voice.name}` : 'Som pronto pelo TTS do sistema')
     }
 
     loadVoices()
@@ -232,17 +241,14 @@ function App() {
 
     if (Capacitor.isNativePlatform()) {
       try {
-        setAudioStatus('Falando em mandarim...')
         await MandarinTts.speak({ text: cleanText, rate })
-        setAudioStatus('Som pronto')
         return
       } catch {
-        setAudioStatus('Usando audio do navegador')
+        // Falls back to browser speech synthesis when Android TTS is unavailable.
       }
     }
 
     if (!('speechSynthesis' in window)) {
-      setAudioStatus('Som indisponivel neste dispositivo')
       return
     }
     window.speechSynthesis.cancel()
@@ -251,9 +257,6 @@ function App() {
     utterance.rate = rate
     utterance.pitch = 1
     if (mandarinVoice) utterance.voice = mandarinVoice
-    utterance.onstart = () => setAudioStatus('Falando em mandarim...')
-    utterance.onend = () => setAudioStatus('Som pronto')
-    utterance.onerror = () => setAudioStatus('Nao consegui tocar o audio')
     window.speechSynthesis.speak(utterance)
   }
 
@@ -319,12 +322,13 @@ function App() {
 
     completeLesson(selectedLesson)
     const nextLessonId = getNextLessonId(selectedLesson.id)
-    if (nextLessonId) {
+  if (nextLessonId) {
       selectLesson(nextLessonId)
       return
     }
 
-    setActiveTab('cards')
+    setPracticeMode('cards')
+    setActiveTab('practice')
   }
 
   function chooseQuizAnswer(choice: string) {
@@ -432,14 +436,60 @@ function App() {
     setClipTheme('pronuncia')
   }
 
-  function recordSpeech(expected: string) {
+  function handleSpeechResult(expected: string, result: string) {
+    const matched = isSpeechCloseEnough(result, expected)
+    setTranscript(result)
+    setProgress((current) => {
+      const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
+      const baseProgress: LearningProgress = {
+        ...current,
+        speakingSessions: current.speakingSessions + 1,
+        xp: current.xp + (matched ? 8 : 4),
+        coins: current.coins + (matched ? 4 : 1),
+        streak: updateStudyStreak(current, today),
+        lastStudyDate: today,
+        dailyGoals: {
+          ...dailyGoals,
+          speaking: dailyGoals.speaking + 1,
+        },
+      }
+      return matched
+        ? resolveMistake(baseProgress, 'speech', expected)
+        : recordMistake(baseProgress, {
+            type: 'speech',
+            itemId: expected,
+            prompt: expected,
+            expected,
+            answer: result,
+            helper: 'Ouça de novo e tente acompanhar o ritmo da frase.',
+          })
+    })
+  }
+
+  async function recordSpeech(expected: string) {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        setTranscript('Ouvindo... fale depois do sinal do Android.')
+        const result = await MandarinSpeech.listen({
+          language: 'zh-CN',
+          prompt: 'Repita a frase em mandarim',
+        })
+        handleSpeechResult(expected, result.transcript)
+        return
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Microfone nao retornou audio.'
+        setTranscript(`${message} Tente de novo em um lugar silencioso.`)
+        return
+      }
+    }
+
     type SpeechRecognitionConstructor = new () => {
       lang: string
       interimResults: boolean
       maxAlternatives: number
       start: () => void
       onresult: (event: { results: { 0: { transcript: string } }[] }) => void
-      onerror: () => void
+      onerror: (event?: { error?: string }) => void
     }
 
     const browserWindow = window as Window & {
@@ -449,7 +499,7 @@ function App() {
     const Recognition = browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition
 
     if (!Recognition) {
-      setTranscript('Reconhecimento de voz indisponivel neste navegador.')
+      setTranscript('Reconhecimento de voz indisponivel neste navegador. No Android, use o APK novo com microfone nativo.')
       return
     }
 
@@ -459,36 +509,94 @@ function App() {
     recognition.maxAlternatives = 1
     recognition.onresult = (event) => {
       const result = event.results[0][0].transcript
-      const matched = normalizeSpeechText(result).includes(normalizeSpeechText(expected).slice(0, 2))
-      setTranscript(result)
-      setProgress((current) => {
-        const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
-        const baseProgress: LearningProgress = {
+      handleSpeechResult(expected, result)
+    }
+    recognition.onerror = (event) =>
+      setTranscript(event?.error === 'not-allowed' ? 'Permita o microfone para gravar.' : 'Microfone nao retornou audio claro. Tente de novo.')
+    recognition.start()
+  }
+
+  function resolveReviewMistake(mistake: LearningMistake) {
+    setProgress((current) => {
+      const baseProgress = resolveMistake(current, mistake.type, mistake.itemId)
+      return {
+        ...baseProgress,
+        streak: updateStudyStreak(baseProgress, today),
+        lastStudyDate: today,
+        mascot: hasOpenMistakes(baseProgress) ? baseProgress.mascot : onCardReview(baseProgress.mascot, today),
+      }
+    })
+  }
+
+  function missReviewMistake(mistake: LearningMistake, answer: string) {
+    setProgress((current) =>
+      recordMistake(current, {
+        type: mistake.type,
+        itemId: mistake.itemId,
+        prompt: mistake.prompt,
+        expected: mistake.expected,
+        answer,
+        helper: mistake.helper,
+      }),
+    )
+  }
+
+  function completeSpeakingSession() {
+    setProgress((current) => {
+      const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
+      return {
+        ...current,
+        speakingSessions: current.speakingSessions + 1,
+        xp: current.xp + 10,
+        coins: current.coins + 5,
+        streak: updateStudyStreak(current, today),
+        lastStudyDate: today,
+        dailyGoals: {
+          ...dailyGoals,
+          speaking: dailyGoals.speaking + 1,
+        },
+      }
+    })
+  }
+
+  function recordWritingMistake(character: WritingCharacter, reason: string) {
+    setProgress((current) =>
+      recordMistake(current, {
+        type: 'writing',
+        itemId: character.id,
+        prompt: character.character,
+        expected: `${character.strokes} tracos com estrutura de ${character.character}`,
+        answer: reason,
+        helper: 'Refaca seguindo as zonas do hanzi e a ordem dos tracos.',
+      }),
+    )
+  }
+
+  function completeWritingPractice(character: WritingCharacter) {
+    setProgress((current) => {
+      const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
+      const baseProgress = resolveMistake(
+        {
           ...current,
-          speakingSessions: current.speakingSessions + 1,
-          xp: current.xp + (matched ? 8 : 4),
-          coins: current.coins + (matched ? 4 : 1),
+          writingSessions: current.writingSessions + 1,
+          xp: current.xp + 8,
+          coins: current.coins + 5,
           streak: updateStudyStreak(current, today),
           lastStudyDate: today,
           dailyGoals: {
             ...dailyGoals,
-            speaking: dailyGoals.speaking + 1,
+            writing: dailyGoals.writing + 1,
           },
-        }
-        return matched
-          ? resolveMistake(baseProgress, 'speech', expected)
-          : recordMistake(baseProgress, {
-              type: 'speech',
-              itemId: expected,
-              prompt: expected,
-              expected,
-              answer: result,
-              helper: 'Ouça de novo e tente acompanhar o ritmo da frase.',
-            })
-      })
-    }
-    recognition.onerror = () => setTranscript('Nao consegui ouvir com clareza.')
-    recognition.start()
+        },
+        'writing',
+        character.id,
+      )
+
+      return {
+        ...baseProgress,
+        mascot: hasOpenMistakes(baseProgress) ? baseProgress.mascot : onCardReview(baseProgress.mascot, today),
+      }
+    })
   }
 
   return (
@@ -547,11 +655,6 @@ function App() {
                 {unresolvedMistakes.length} erros
               </span>
             )}
-            <span className="sound-status">{audioStatus}</span>
-            <button className="primary-action" type="button" onClick={() => speak(quizPhrase.hanzi)}>
-              <Volume2 size={18} />
-              Ativar som
-            </button>
           </div>
         </header>
 
@@ -572,107 +675,25 @@ function App() {
             onAdvanceNow={advanceLessonFlow}
           />
         )}
-        {activeTab === 'cards' && (
-          <CardsView
+        {activeTab === 'practice' && (
+          <PracticeView
+            mode={practiceMode}
+            onModeChange={setPracticeMode}
             activeCard={activeCard}
             dueCount={dueCards.length}
             flipped={isCardFlipped}
             progress={progress}
             openMistakes={unresolvedMistakes}
+            transcript={transcript}
             onFlip={() => setIsCardFlipped((current) => !current)}
             onReview={reviewCard}
-            onResolveMistake={(mistake) =>
-              setProgress((current) => {
-                const baseProgress = resolveMistake(current, mistake.type, mistake.itemId)
-                return {
-                  ...baseProgress,
-                  streak: updateStudyStreak(baseProgress, today),
-                  lastStudyDate: today,
-                  mascot: hasOpenMistakes(baseProgress) ? baseProgress.mascot : onCardReview(baseProgress.mascot, today),
-                }
-              })
-            }
-            onMissMistake={(mistake, answer) =>
-              setProgress((current) =>
-                recordMistake(current, {
-                  type: mistake.type,
-                  itemId: mistake.itemId,
-                  prompt: mistake.prompt,
-                  expected: mistake.expected,
-                  answer,
-                  helper: mistake.helper,
-                }),
-              )
-            }
-            onSpeak={speak}
-          />
-        )}
-        {activeTab === 'speak' && (
-          <SpeakView
-            transcript={transcript}
+            onResolveMistake={resolveReviewMistake}
+            onMissMistake={missReviewMistake}
             onRecord={recordSpeech}
+            onCompleteSpeakingSession={completeSpeakingSession}
+            onPracticeMistake={recordWritingMistake}
+            onCompleteWritingPractice={completeWritingPractice}
             onSpeak={speak}
-            onCompleteSession={() =>
-              setProgress((current) => {
-                const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
-                return {
-                  ...current,
-                  speakingSessions: current.speakingSessions + 1,
-                  xp: current.xp + 10,
-                  coins: current.coins + 5,
-                  streak: updateStudyStreak(current, today),
-                  lastStudyDate: today,
-                  dailyGoals: {
-                    ...dailyGoals,
-                    speaking: dailyGoals.speaking + 1,
-                  },
-                }
-              })
-            }
-          />
-        )}
-        {activeTab === 'write' && (
-          <WritingView
-            onSpeak={speak}
-            openMistakes={unresolvedMistakes.filter((mistake) => mistake.type === 'writing')}
-            onPracticeMistake={(character, reason) =>
-              setProgress((current) =>
-                recordMistake(current, {
-                  type: 'writing',
-                  itemId: character.id,
-                  prompt: character.character,
-                  expected: `${character.strokes} tracos com estrutura de ${character.character}`,
-                  answer: reason,
-                  helper: 'Refaca seguindo as zonas do hanzi e a ordem dos tracos.',
-                }),
-              )
-            }
-            onCompletePractice={(character) =>
-              setProgress((current) => {
-                const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
-                const baseProgress = resolveMistake(
-                  {
-                    ...current,
-                    writingSessions: current.writingSessions + 1,
-                    xp: current.xp + 8,
-                    coins: current.coins + 5,
-                    streak: updateStudyStreak(current, today),
-                    lastStudyDate: today,
-                    dailyGoals: {
-                      ...dailyGoals,
-                      writing: dailyGoals.writing + 1,
-                    },
-                  },
-                  'writing',
-                  character.id,
-                )
-
-                return {
-                  ...baseProgress,
-                  mascot: hasOpenMistakes(baseProgress) ? baseProgress.mascot : onCardReview(baseProgress.mascot, today),
-                }
-              })
-            }
           />
         )}
         {activeTab === 'clips' && (
@@ -770,10 +791,8 @@ function App() {
 
 function activeTitle(tab: Tab) {
   const labels: Record<Tab, string> = {
-    learn: 'Trilha de mandarim',
-    cards: 'Revisao inteligente',
-    speak: 'Fala e tons',
-    write: 'Escrita hanzi',
+    learn: 'Arvore de mandarim',
+    practice: 'Treino diario',
     clips: 'Estudar com cultura',
     mascot: 'Seu companheiro Koi',
     profile: 'Seu ritmo',
@@ -792,6 +811,18 @@ function getNextLessonId(currentLessonId: string) {
 
 function normalizeSpeechText(text: string) {
   return text.replace(/[?？,，.。]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function isSpeechCloseEnough(result: string, expected: string) {
+  const cleanResult = normalizeSpeechText(result)
+  const cleanExpected = normalizeSpeechText(expected)
+  if (!cleanResult || !cleanExpected) return false
+  if (cleanResult.includes(cleanExpected) || cleanExpected.includes(cleanResult)) return true
+
+  const expectedChars = Array.from(cleanExpected).filter((char) => /[\u3400-\u9fff]/u.test(char))
+  const resultChars = new Set(Array.from(cleanResult).filter((char) => /[\u3400-\u9fff]/u.test(char)))
+  const common = expectedChars.filter((char) => resultChars.has(char)).length
+  return common >= Math.min(2, expectedChars.length)
 }
 
 function normalizeAnswer(text: string) {
@@ -896,43 +927,58 @@ function LearnView({
         </div>
       </section>
 
-      <section className="path-panel">
-        {units.map((unit, unitIndex) => (
-          <div className={`unit-group ${unit.accent}`} key={unit.id}>
-            <div className="unit-heading">
-              <div>
+      <section className="lesson-tree-panel" aria-label="Arvore de crescimento HSK">
+        <div className="tree-canopy">
+          <p className="eyebrow">Arvore HSK</p>
+          <h2>Suba de raiz em raiz ate o proximo nivel.</h2>
+        </div>
+        <div className="tree-trunk">
+          {units.map((unit, unitIndex) => (
+            <div className={`tree-stage ${unit.accent}`} key={unit.id}>
+              <div className="hsk-gate">
                 <span>{unit.level}</span>
-                <h3>{unit.title}</h3>
-                <p>{unit.summary}</p>
+                <strong>{unit.title}</strong>
+                <small>{unitCompletion(unit.id)}%</small>
               </div>
-              <strong>{unitCompletion(unit.id)}%</strong>
+              <div className="tree-branch">
+                {unit.lessonIds.map((lessonId, lessonIndex) => {
+                  const lesson = lessons.find((item) => item.id === lessonId)
+                  if (!lesson) return null
+                  const completed = progress.completedLessons.includes(lesson.id)
+                  return (
+                    <button
+                      className={[
+                        'lesson-node',
+                        'tree-node',
+                        selectedLessonId === lesson.id ? 'active' : '',
+                        completed ? 'complete' : '',
+                      ].join(' ')}
+                      key={lesson.id}
+                      type="button"
+                      onClick={() => onSelectLesson(lesson.id)}
+                      style={{
+                        '--branch-x': `${lessonIndex === 1 ? 0 : lessonIndex === 0 ? -58 : 58}px`,
+                        '--branch-y': `${lessonIndex * 12}px`,
+                        '--stage-delay': `${unitIndex * 0.04}s`,
+                      } as React.CSSProperties}
+                    >
+                      <span className="tree-node-icon">
+                        {completed ? <CheckCircle2 size={22} /> : <GraduationCap size={22} />}
+                      </span>
+                      <span>{lesson.title}</span>
+                      <small>{lesson.xp} XP</small>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-            <div className="lesson-path">
-              {unit.lessonIds.map((lessonId, lessonIndex) => {
-                const lesson = lessons.find((item) => item.id === lessonId)
-                if (!lesson) return null
-                const completed = progress.completedLessons.includes(lesson.id)
-                return (
-                  <button
-                    className={[
-                      'lesson-node',
-                      selectedLessonId === lesson.id ? 'active' : '',
-                      completed ? 'complete' : '',
-                    ].join(' ')}
-                    key={lesson.id}
-                    type="button"
-                    onClick={() => onSelectLesson(lesson.id)}
-                    style={{ '--offset': `${(lessonIndex % 2) * 26 + unitIndex * 4}px` } as React.CSSProperties}
-                  >
-                    {completed ? <CheckCircle2 size={20} /> : <GraduationCap size={20} />}
-                    <span>{lesson.title}</span>
-                    <small>{lesson.xp} XP</small>
-                  </button>
-                )
-              })}
-            </div>
+          ))}
+          <div className="hsk-gate next">
+            <span>Proximo portal</span>
+            <strong>HSK 2</strong>
+            <small>libera com HSK 1 completo</small>
           </div>
-        ))}
+        </div>
       </section>
 
       <section className="lesson-panel">
@@ -1000,6 +1046,98 @@ function LearnView({
           </button>
         </div>
       </section>
+    </div>
+  )
+}
+
+function PracticeView({
+  mode,
+  onModeChange,
+  activeCard,
+  dueCount,
+  flipped,
+  progress,
+  openMistakes,
+  transcript,
+  onFlip,
+  onReview,
+  onResolveMistake,
+  onMissMistake,
+  onRecord,
+  onCompleteSpeakingSession,
+  onPracticeMistake,
+  onCompleteWritingPractice,
+  onSpeak,
+}: {
+  mode: PracticeMode
+  onModeChange: (mode: PracticeMode) => void
+  activeCard: (typeof allPhrases)[number]
+  dueCount: number
+  flipped: boolean
+  progress: LearningProgress
+  openMistakes: LearningMistake[]
+  transcript: string
+  onFlip: () => void
+  onReview: (difficulty: Difficulty) => void
+  onResolveMistake: (mistake: LearningMistake) => void
+  onMissMistake: (mistake: LearningMistake, answer: string) => void
+  onRecord: (expected: string) => void
+  onCompleteSpeakingSession: () => void
+  onPracticeMistake: (character: WritingCharacter, reason: string) => void
+  onCompleteWritingPractice: (character: WritingCharacter) => void
+  onSpeak: (text: string) => void
+}) {
+  return (
+    <div className="practice-layout">
+      <section className="practice-switcher" aria-label="Modos de treino">
+        {practiceModes.map((item) => {
+          const Icon = item.icon
+          return (
+            <button
+              key={item.id}
+              className={mode === item.id ? 'active' : ''}
+              type="button"
+              onClick={() => onModeChange(item.id)}
+            >
+              <Icon size={18} />
+              {item.label}
+            </button>
+          )
+        })}
+      </section>
+
+      {mode === 'cards' && (
+        <CardsView
+          activeCard={activeCard}
+          dueCount={dueCount}
+          flipped={flipped}
+          progress={progress}
+          openMistakes={openMistakes}
+          onFlip={onFlip}
+          onReview={onReview}
+          onResolveMistake={onResolveMistake}
+          onMissMistake={onMissMistake}
+          onSpeak={onSpeak}
+        />
+      )}
+
+      {mode === 'speak' && (
+        <SpeakView
+          transcript={transcript}
+          onRecord={onRecord}
+          onSpeak={onSpeak}
+          onCompleteSession={onCompleteSpeakingSession}
+        />
+      )}
+
+      {mode === 'write' && (
+        <WritingView
+          onSpeak={onSpeak}
+          openMistakes={openMistakes.filter((mistake) => mistake.type === 'writing')}
+          onPracticeMistake={onPracticeMistake}
+          onCompletePractice={onCompleteWritingPractice}
+        />
+      )}
     </div>
   )
 }
@@ -1502,10 +1640,11 @@ function validateWritingAttempt(
     return { ok: false, message: `Meta: ${character.strokes} tracos principais.` }
   }
 
-  if (strokesDrawn !== character.strokes) {
+  const strokeTolerance = character.strokes >= 6 ? 2 : 1
+  if (Math.abs(strokesDrawn - character.strokes) > strokeTolerance) {
     return {
       ok: false,
-      message: `Incorreto: voce fez ${strokesDrawn} tracos. Este hanzi pede ${character.strokes} tracos principais.`,
+      message: `Voce fez ${strokesDrawn} tracos. Esse hanzi aceita perto de ${character.strokes}; tente chegar mais proximo.`,
     }
   }
 
@@ -1520,9 +1659,9 @@ function validateWritingAttempt(
   const pathLength = strokes.reduce((total, stroke) => total + getPathLength(stroke), 0)
   const template = writingValidationTemplates[character.id] ?? {
     cells: ['1-0', '0-1', '1-1', '2-1', '1-2'],
-    minWidthRatio: 0.4,
-    minHeightRatio: 0.45,
-    minPathLength: WRITING_MIN_PATH,
+    minWidthRatio: 0.3,
+    minHeightRatio: 0.34,
+    minPathLength: WRITING_MIN_PATH * 0.65,
   }
 
   if (widthRatio < template.minWidthRatio || heightRatio < template.minHeightRatio) {
@@ -1540,10 +1679,11 @@ function validateWritingAttempt(
       return `${col}-${row}`
     }),
   )
-  const missingCells = template.cells.filter((cell) => !touchedCells.has(cell))
+  const hitCells = template.cells.filter((cell) => touchedCells.has(cell)).length
+  const neededCells = Math.max(2, Math.ceil(template.cells.length * 0.45))
 
-  if (missingCells.length > Math.max(1, Math.floor(template.cells.length * 0.25))) {
-    return { ok: false, message: 'A forma nao bateu com as zonas principais do hanzi. Siga a sombra do caractere.' }
+  if (hitCells < neededCells) {
+    return { ok: false, message: 'A forma ficou muito fora do hanzi. Siga a sombra, mas nao precisa ficar perfeito.' }
   }
 
   return { ok: true, message: 'Hanzi validado.' }

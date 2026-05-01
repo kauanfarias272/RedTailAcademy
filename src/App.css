@@ -277,6 +277,7 @@
 }
 
 .learn-grid,
+.practice-layout,
 .cards-layout,
 .speak-grid,
 .writing-layout,
@@ -284,6 +285,41 @@
 .profile-layout {
   display: grid;
   gap: 18px;
+}
+
+.practice-layout {
+  grid-template-columns: 1fr;
+}
+
+.practice-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 250, 244, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.practice-switcher button {
+  flex: 1 1 150px;
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #a99c8f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+}
+
+.practice-switcher button.active {
+  background: #b92732;
+  color: #fffaf4;
 }
 
 .learn-grid {
@@ -325,10 +361,159 @@
   gap: 10px;
 }
 
-.path-panel {
+.path-panel,
+.lesson-tree-panel {
   grid-area: path;
+}
+
+.path-panel {
   display: grid;
   gap: 16px;
+}
+
+.lesson-tree-panel {
+  position: relative;
+  overflow: hidden;
+  min-height: 760px;
+  border-radius: 8px;
+  padding: 20px;
+  background:
+    linear-gradient(180deg, rgba(33, 132, 107, 0.16), transparent 42%),
+    rgba(15, 17, 22, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tree-canopy {
+  position: relative;
+  z-index: 2;
+  max-width: 380px;
+  margin-bottom: 18px;
+}
+
+.tree-canopy h2 {
+  margin: 0;
+  line-height: 1.08;
+}
+
+.tree-trunk {
+  position: relative;
+  display: grid;
+  gap: 28px;
+  padding: 14px 0 30px;
+}
+
+.tree-trunk::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 12px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #5b2f1d, #8f4d2b 48%, #21846b);
+  box-shadow: 0 0 0 8px rgba(143, 77, 43, 0.08);
+}
+
+.tree-stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  animation: tree-rise 0.5s ease-out both;
+  animation-delay: var(--stage-delay, 0s);
+}
+
+.hsk-gate {
+  position: relative;
+  z-index: 2;
+  min-width: min(100%, 330px);
+  border-radius: 8px;
+  padding: 13px 16px;
+  display: grid;
+  gap: 2px;
+  text-align: center;
+  background: #111217;
+  color: #fffaf4;
+  border: 1px solid rgba(242, 191, 82, 0.22);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.hsk-gate span,
+.hsk-gate small {
+  color: #f2bf52;
+  font-weight: 900;
+}
+
+.hsk-gate.next {
+  margin: 0 auto;
+  border-style: dashed;
+  opacity: 0.78;
+}
+
+.tree-branch {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.tree-node {
+  position: relative;
+  width: 100%;
+  min-height: 118px;
+  margin-left: 0;
+  transform: translate(var(--branch-x, 0), var(--branch-y, 0));
+  grid-template-columns: 1fr;
+  justify-items: center;
+  text-align: center;
+  border-radius: 999px;
+  padding: 14px 12px;
+  background:
+    radial-gradient(circle at 50% 16%, rgba(255, 255, 255, 0.14), transparent 32%),
+    #151820;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.2);
+}
+
+.tree-node::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 92px;
+  height: 2px;
+  top: 50%;
+  left: 50%;
+  background: rgba(143, 77, 43, 0.52);
+  transform: translate(-50%, -50%) rotate(18deg);
+}
+
+.tree-node-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 250, 244, 0.1);
+}
+
+.tree-node.active {
+  border-color: #f2bf52;
+  box-shadow: 0 0 0 5px rgba(242, 191, 82, 0.12), 0 16px 28px rgba(0, 0, 0, 0.22);
+}
+
+.tree-node.complete {
+  border-color: rgba(33, 132, 107, 0.9);
+  background:
+    radial-gradient(circle at 50% 16%, rgba(255, 255, 255, 0.15), transparent 32%),
+    #123329;
+}
+
+@keyframes tree-rise {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .unit-group {
@@ -2037,6 +2222,7 @@ select:focus-visible {
   }
 
   .learn-grid,
+  .practice-layout,
   .cards-layout,
   .speak-grid,
   .writing-layout,
@@ -2056,6 +2242,14 @@ select:focus-visible {
     position: static;
   }
 
+  .lesson-tree-panel {
+    min-height: auto;
+  }
+
+  .tree-node {
+    transform: translateY(var(--branch-y, 0));
+  }
+
   .mission-band {
     flex-direction: column;
   }
@@ -2069,7 +2263,7 @@ select:focus-visible {
     z-index: 20;
     inset: auto 12px 12px;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 6px;
     padding: 8px;
     border-radius: 8px;

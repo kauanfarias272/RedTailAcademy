@@ -26,6 +26,6 @@ npm run android:release
 
 Os APK/AAB versionados ficam na raiz do projeto, por exemplo:
 
-- `RedTailAcademy-v0.1.2-debug.apk`
-- `RedTailAcademy-v0.1.2-release-unsigned.apk`
-- `RedTailAcademy-v0.1.2-release.aab`
+- `RedTailAcademy-v0.1.3-debug.apk`
+- `RedTailAcademy-v0.1.3-release-unsigned.apk`
+- `RedTailAcademy-v0.1.3-release.aab`
