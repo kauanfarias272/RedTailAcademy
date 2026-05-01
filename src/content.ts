@@ -37,6 +37,19 @@ export type ClipSeed = {
   kind: 'article' | 'video' | 'song'
 }
 
+export type StudyMoment = {
+  id: string
+  title: string
+  source: string
+  type: 'meme' | 'song' | 'anthem' | 'history'
+  level: string
+  phrase: string
+  pinyin: string
+  meaning: string
+  note: string
+  searchUrl: string
+}
+
 export type WritingCharacter = {
   id: string
   character: string
@@ -458,6 +471,69 @@ export const clipSeeds: ClipSeed[] = [
     theme: 'musica',
     kind: 'song',
     url: 'https://www.chinesewithping.com/',
+  },
+]
+
+export const studyMoments: StudyMoment[] = [
+  {
+    id: 'super-idol',
+    title: 'Super Idol',
+    source: 'Meme musical',
+    type: 'song',
+    level: 'Livre',
+    phrase: '笑容',
+    pinyin: 'xiàoróng',
+    meaning: 'sorriso',
+    note: 'Use o meme para treinar xiao, rong e o segundo tom subindo no final.',
+    searchUrl: 'https://www.youtube.com/results?search_query=Super+Idol+Chinese+lyrics+learning',
+  },
+  {
+    id: 'john-cena-bing-chilling',
+    title: 'John Cena falando mandarim',
+    source: 'Meme de entrevista',
+    type: 'meme',
+    level: 'HSK 1',
+    phrase: '冰淇淋',
+    pinyin: 'bīngqílín',
+    meaning: 'sorvete',
+    note: 'Palavra divertida para treinar b, q e tons em sequencia.',
+    searchUrl: 'https://www.youtube.com/results?search_query=John+Cena+Mandarin+bing+chilling',
+  },
+  {
+    id: 'chinese-anthem',
+    title: 'Hino chines',
+    source: 'Musica civica',
+    type: 'anthem',
+    level: 'Interesse cultural',
+    phrase: '起来',
+    pinyin: 'qǐlái',
+    meaning: 'levantar-se',
+    note: 'Boa palavra para perceber terceiro tom seguido de segundo tom.',
+    searchUrl: 'https://www.youtube.com/results?search_query=Chinese+national+anthem+lyrics+pinyin',
+  },
+  {
+    id: 'mao-historical-song',
+    title: 'Cancoes historicas de Mao Zedong',
+    source: 'Contexto historico',
+    type: 'history',
+    level: 'Cultura',
+    phrase: '东方红',
+    pinyin: 'Dōngfāng hóng',
+    meaning: 'o oriente e vermelho',
+    note: 'Use como contexto cultural e para treinar dong, fang e hong sem depender de traducao literal.',
+    searchUrl: 'https://www.youtube.com/results?search_query=The+East+is+Red+Chinese+pinyin',
+  },
+  {
+    id: 'football-meme',
+    title: 'Meme de torcida',
+    source: 'Frase viral',
+    type: 'meme',
+    level: 'HSK 1',
+    phrase: '加油',
+    pinyin: 'jiāyóu',
+    meaning: 'forca / vamos la',
+    note: 'Perfeito para jogos, desafios e rankings entre amigos.',
+    searchUrl: 'https://www.youtube.com/results?search_query=jiayou+Chinese+meme',
   },
 ]
 

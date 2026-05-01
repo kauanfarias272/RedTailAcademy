@@ -11,6 +11,7 @@ import {
   Headphones,
   Layers3,
   Library,
+  LockKeyhole,
   Mic,
   Play,
   Plus,
@@ -18,6 +19,7 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  Target,
   Trophy,
   Undo2,
   Volume2,
@@ -30,21 +32,31 @@ import {
   allPhrases,
   clipSeeds,
   lessons,
+  studyMoments,
   toneDrills,
   units,
   writingCharacters,
   type Lesson,
   type Phrase,
+  type StudyMoment,
   type WritingCharacter,
 } from './content'
 import {
+  hasOpenMistakes,
   nextDueDate,
+  normalizeDailyGoals,
+  openMistakes,
+  personalGoals,
+  progressLevel,
+  recordMistake,
+  resolveMistake,
   updateStudyStreak,
   useStoredProgress,
   useToday,
+  type LearningMistake,
   type LearningProgress,
 } from './progress'
-import { checkInactivity, onLessonComplete, onCardReview } from './mascot'
+import { checkInactivity, getStageAccessories, onLessonComplete, onCardReview } from './mascot'
 import { MascotWidget } from './MascotWidget'
 
 type Tab = 'learn' | 'cards' | 'speak' | 'write' | 'clips' | 'mascot' | 'profile'
@@ -61,7 +73,7 @@ const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen }> = [
   { id: 'cards', label: 'Cartoes', icon: Layers3 },
   { id: 'speak', label: 'Fala', icon: Mic },
   { id: 'write', label: 'Escrita', icon: Brush },
-  { id: 'clips', label: 'Clips', icon: Headphones },
+  { id: 'clips', label: 'Estudar', icon: Headphones },
   { id: 'mascot', label: 'Koi', icon: Fish },
   { id: 'profile', label: 'Perfil', icon: Trophy },
 ]
@@ -76,6 +88,31 @@ const quizOptions = [
   'beber agua',
   'sem problema',
 ]
+
+const FREEZE_COST = 80
+const MASCOT_SWITCH_COST = 300
+const WRITING_MIN_PATH = 220
+
+type DrawPoint = {
+  x: number
+  y: number
+}
+
+type WritingValidationTemplate = {
+  cells: string[]
+  minWidthRatio: number
+  minHeightRatio: number
+  minPathLength: number
+}
+
+const writingValidationTemplates: Record<string, WritingValidationTemplate> = {
+  ren: { cells: ['1-0', '1-1', '0-2', '2-2'], minWidthRatio: 0.36, minHeightRatio: 0.5, minPathLength: 180 },
+  kou: { cells: ['0-0', '1-0', '2-0', '0-1', '2-1', '0-2', '1-2', '2-2'], minWidthRatio: 0.42, minHeightRatio: 0.42, minPathLength: 220 },
+  ni: { cells: ['0-0', '0-1', '1-0', '2-0', '1-1', '2-1', '1-2', '2-2'], minWidthRatio: 0.48, minHeightRatio: 0.56, minPathLength: 360 },
+  hao: { cells: ['0-0', '0-1', '0-2', '1-1', '2-0', '2-1', '1-2', '2-2'], minWidthRatio: 0.5, minHeightRatio: 0.5, minPathLength: 320 },
+  zhong: { cells: ['0-0', '1-0', '2-0', '0-1', '1-1', '2-1', '1-2'], minWidthRatio: 0.4, minHeightRatio: 0.58, minPathLength: 260 },
+  shui: { cells: ['1-0', '1-1', '0-2', '1-2', '2-2'], minWidthRatio: 0.48, minHeightRatio: 0.56, minPathLength: 260 },
+}
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('learn')
@@ -126,6 +163,13 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    setProgress((current) => {
+      if (current.dailyGoals.date === today) return current
+      return { ...current, dailyGoals: normalizeDailyGoals(current.dailyGoals, today) }
+    })
+  }, [setProgress, today])
+
   // Check mascot inactivity on app load
   useEffect(() => {
     if (today && progress.mascot.lastActiveDate) {
@@ -160,6 +204,9 @@ function App() {
   }, [today])
 
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) ?? lessons[0]
+  const unresolvedMistakes = openMistakes(progress)
+  const mascotEvolutionLocked = unresolvedMistakes.length > 0
+  const userLevel = progressLevel(progress.xp)
   const completedCount = progress.completedLessons.length
   const dueCards = allPhrases.filter((phrase) => {
     const card = progress.cards[phrase.id]
@@ -212,6 +259,7 @@ function App() {
 
   function completeLesson(lesson: Lesson) {
     setProgress((current) => {
+      const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
       const alreadyCompleted = current.completedLessons.includes(lesson.id)
       const cards = { ...current.cards }
       lesson.phrases.forEach((phrase) => {
@@ -223,19 +271,28 @@ function App() {
         }
       })
 
-      const updatedMascot = alreadyCompleted
-        ? current.mascot
-        : onLessonComplete(current.mascot, today)
-
-      return {
+      const nextBase = {
         ...current,
         xp: alreadyCompleted ? current.xp : current.xp + lesson.xp,
+        coins: alreadyCompleted ? current.coins : current.coins + 12,
         streak: updateStudyStreak(current, today),
         lastStudyDate: today,
         completedLessons: alreadyCompleted
           ? current.completedLessons
           : [...current.completedLessons, lesson.id],
         cards,
+        dailyGoals: {
+          ...dailyGoals,
+          lessons: alreadyCompleted ? dailyGoals.lessons : dailyGoals.lessons + 1,
+        },
+      }
+
+      const updatedMascot = alreadyCompleted || hasOpenMistakes(nextBase)
+        ? current.mascot
+        : onLessonComplete(nextBase.mascot, today)
+
+      return {
+        ...nextBase,
         mascot: updatedMascot,
       }
     })
@@ -273,11 +330,25 @@ function App() {
   function chooseQuizAnswer(choice: string) {
     setQuizChoice(choice)
     if (choice !== quizPhrase.portuguese) {
+      setProgress((current) =>
+        recordMistake(
+          current,
+          {
+            type: 'lesson',
+            itemId: quizPhrase.id,
+            prompt: `${quizPhrase.hanzi} - ${quizPhrase.pinyin}`,
+            expected: quizPhrase.portuguese,
+            answer: choice,
+            helper: quizPhrase.note,
+          },
+        ),
+      )
       setIsAutoAdvancing(false)
       if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
       return
     }
 
+    setProgress((current) => resolveMistake(current, 'lesson', quizPhrase.id))
     speak(quizPhrase.hanzi)
     setIsAutoAdvancing(true)
     if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
@@ -286,6 +357,7 @@ function App() {
 
   function reviewCard(difficulty: Difficulty) {
     setProgress((current) => {
+      const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
       const existing = current.cards[activeCard.id] ?? {
         box: 0,
         dueAt: Date.now(),
@@ -295,11 +367,16 @@ function App() {
       const nextBox =
         difficulty === 'hard' ? Math.max(0, existing.box - 1) : existing.box + (difficulty === 'easy' ? 2 : 1)
 
-      return {
+      const baseProgress: LearningProgress = {
         ...current,
+        coins: current.coins + (difficulty === 'hard' ? 1 : difficulty === 'good' ? 3 : 5),
         xp: current.xp + (difficulty === 'hard' ? 2 : difficulty === 'good' ? 4 : 6),
         streak: updateStudyStreak(current, today),
         lastStudyDate: today,
+        dailyGoals: {
+          ...dailyGoals,
+          cards: dailyGoals.cards + 1,
+        },
         cards: {
           ...current.cards,
           [activeCard.id]: {
@@ -309,7 +386,25 @@ function App() {
             correct: existing.correct + (difficulty === 'hard' ? 0 : 1),
           },
         },
-        mascot: onCardReview(current.mascot, today),
+      }
+
+      const progressWithMistakeState =
+        difficulty === 'hard'
+          ? recordMistake(baseProgress, {
+              type: 'card',
+              itemId: activeCard.id,
+              prompt: `${activeCard.hanzi} - ${activeCard.pinyin}`,
+              expected: activeCard.portuguese,
+              answer: 'Marcou como dificil',
+              helper: activeCard.note,
+            })
+          : resolveMistake(baseProgress, 'card', activeCard.id)
+
+      return {
+        ...progressWithMistakeState,
+        mascot: hasOpenMistakes(progressWithMistakeState)
+          ? progressWithMistakeState.mascot
+          : onCardReview(progressWithMistakeState.mascot, today),
       }
     })
     setIsCardFlipped(false)
@@ -364,14 +459,33 @@ function App() {
     recognition.maxAlternatives = 1
     recognition.onresult = (event) => {
       const result = event.results[0][0].transcript
+      const matched = normalizeSpeechText(result).includes(normalizeSpeechText(expected).slice(0, 2))
       setTranscript(result)
-      setProgress((current) => ({
-        ...current,
-        speakingSessions: current.speakingSessions + 1,
-        xp: current.xp + (result.includes(expected.slice(0, 1)) ? 8 : 4),
-        streak: updateStudyStreak(current, today),
-        lastStudyDate: today,
-      }))
+      setProgress((current) => {
+        const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
+        const baseProgress: LearningProgress = {
+          ...current,
+          speakingSessions: current.speakingSessions + 1,
+          xp: current.xp + (matched ? 8 : 4),
+          coins: current.coins + (matched ? 4 : 1),
+          streak: updateStudyStreak(current, today),
+          lastStudyDate: today,
+          dailyGoals: {
+            ...dailyGoals,
+            speaking: dailyGoals.speaking + 1,
+          },
+        }
+        return matched
+          ? resolveMistake(baseProgress, 'speech', expected)
+          : recordMistake(baseProgress, {
+              type: 'speech',
+              itemId: expected,
+              prompt: expected,
+              expected,
+              answer: result,
+              helper: 'Ouça de novo e tente acompanhar o ritmo da frase.',
+            })
+      })
     }
     recognition.onerror = () => setTranscript('Nao consegui ouvir com clareza.')
     recognition.start()
@@ -409,9 +523,10 @@ function App() {
         </nav>
 
         <div className="nav-stats" aria-label="Resumo de progresso">
-          <MascotWidget mascot={progress.mascot} compact={true} />
+          <MascotWidget mascot={progress.mascot} compact={true} blockedByMistakes={unresolvedMistakes.length} />
           <Stat icon={Flame} label="Streak" value={`${progress.streak} dias`} />
           <Stat icon={Star} label="XP" value={`${progress.xp}`} />
+          <Stat icon={Target} label="Moedas" value={`${progress.coins}`} />
           <Stat icon={CalendarCheck} label="Minutos" value={`${totalMinutes}`} />
         </div>
       </aside>
@@ -426,6 +541,12 @@ function App() {
             <div className="progress-ring" style={{ '--progress': `${levelProgress}%` } as CSSProperties}>
               <span>{levelProgress}%</span>
             </div>
+            {mascotEvolutionLocked && (
+              <span className="evolution-lock" title="Corrija seus erros para voltar a evoluir o mascote">
+                <LockKeyhole size={15} />
+                {unresolvedMistakes.length} erros
+              </span>
+            )}
             <span className="sound-status">{audioStatus}</span>
             <button className="primary-action" type="button" onClick={() => speak(quizPhrase.hanzi)}>
               <Volume2 size={18} />
@@ -457,8 +578,32 @@ function App() {
             dueCount={dueCards.length}
             flipped={isCardFlipped}
             progress={progress}
+            openMistakes={unresolvedMistakes}
             onFlip={() => setIsCardFlipped((current) => !current)}
             onReview={reviewCard}
+            onResolveMistake={(mistake) =>
+              setProgress((current) => {
+                const baseProgress = resolveMistake(current, mistake.type, mistake.itemId)
+                return {
+                  ...baseProgress,
+                  streak: updateStudyStreak(baseProgress, today),
+                  lastStudyDate: today,
+                  mascot: hasOpenMistakes(baseProgress) ? baseProgress.mascot : onCardReview(baseProgress.mascot, today),
+                }
+              })
+            }
+            onMissMistake={(mistake, answer) =>
+              setProgress((current) =>
+                recordMistake(current, {
+                  type: mistake.type,
+                  itemId: mistake.itemId,
+                  prompt: mistake.prompt,
+                  expected: mistake.expected,
+                  answer,
+                  helper: mistake.helper,
+                }),
+              )
+            }
             onSpeak={speak}
           />
         )}
@@ -468,27 +613,65 @@ function App() {
             onRecord={recordSpeech}
             onSpeak={speak}
             onCompleteSession={() =>
-              setProgress((current) => ({
-                ...current,
-                speakingSessions: current.speakingSessions + 1,
-                xp: current.xp + 10,
-                streak: updateStudyStreak(current, today),
-                lastStudyDate: today,
-              }))
+              setProgress((current) => {
+                const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
+                return {
+                  ...current,
+                  speakingSessions: current.speakingSessions + 1,
+                  xp: current.xp + 10,
+                  coins: current.coins + 5,
+                  streak: updateStudyStreak(current, today),
+                  lastStudyDate: today,
+                  dailyGoals: {
+                    ...dailyGoals,
+                    speaking: dailyGoals.speaking + 1,
+                  },
+                }
+              })
             }
           />
         )}
         {activeTab === 'write' && (
           <WritingView
             onSpeak={speak}
-            onCompletePractice={() =>
-              setProgress((current) => ({
-                ...current,
-                writingSessions: current.writingSessions + 1,
-                xp: current.xp + 8,
-                streak: updateStudyStreak(current, today),
-                lastStudyDate: today,
-              }))
+            openMistakes={unresolvedMistakes.filter((mistake) => mistake.type === 'writing')}
+            onPracticeMistake={(character, reason) =>
+              setProgress((current) =>
+                recordMistake(current, {
+                  type: 'writing',
+                  itemId: character.id,
+                  prompt: character.character,
+                  expected: `${character.strokes} tracos com estrutura de ${character.character}`,
+                  answer: reason,
+                  helper: 'Refaca seguindo as zonas do hanzi e a ordem dos tracos.',
+                }),
+              )
+            }
+            onCompletePractice={(character) =>
+              setProgress((current) => {
+                const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
+                const baseProgress = resolveMistake(
+                  {
+                    ...current,
+                    writingSessions: current.writingSessions + 1,
+                    xp: current.xp + 8,
+                    coins: current.coins + 5,
+                    streak: updateStudyStreak(current, today),
+                    lastStudyDate: today,
+                    dailyGoals: {
+                      ...dailyGoals,
+                      writing: dailyGoals.writing + 1,
+                    },
+                  },
+                  'writing',
+                  character.id,
+                )
+
+                return {
+                  ...baseProgress,
+                  mascot: hasOpenMistakes(baseProgress) ? baseProgress.mascot : onCardReview(baseProgress.mascot, today),
+                }
+              })
             }
           />
         )}
@@ -497,25 +680,71 @@ function App() {
             clipTitle={clipTitle}
             clipUrl={clipUrl}
             clipTheme={clipTheme}
+            studyMoments={studyMoments}
             savedClips={progress.savedClips}
             onAddClip={addClip}
             onTitleChange={setClipTitle}
             onUrlChange={setClipUrl}
             onThemeChange={setClipTheme}
+            onSpeak={speak}
           />
         )}
         {activeTab === 'mascot' && (
           <MascotWidget
             mascot={progress.mascot}
+            blockedByMistakes={unresolvedMistakes.length}
+            userLevel={userLevel}
+            coins={progress.coins}
+            switchCost={MASCOT_SWITCH_COST}
             onRename={(name) =>
               setProgress((current) => ({
                 ...current,
                 mascot: { ...current.mascot, name },
               }))
             }
+            onSwitchPath={() =>
+              setProgress((current) => {
+                if (progressLevel(current.xp) < 10 || current.coins < MASCOT_SWITCH_COST) return current
+                const nextPath = current.mascot.evolutionPath === 'dragon' ? 'peng' : 'dragon'
+                return {
+                  ...current,
+                  coins: current.coins - MASCOT_SWITCH_COST,
+                  mascot: {
+                    ...current.mascot,
+                    evolutionPath: nextPath,
+                    accessories: getStageAccessories(current.mascot.stage, nextPath),
+                    animation: 'evolve',
+                    mood: 'excited',
+                  },
+                }
+              })
+            }
           />
         )}
-        {activeTab === 'profile' && <ProfileView progress={progress} totalMinutes={totalMinutes} />}
+        {activeTab === 'profile' && (
+          <ProfileView
+            progress={progress}
+            totalMinutes={totalMinutes}
+            openMistakeCount={unresolvedMistakes.length}
+            userLevel={userLevel}
+            onBuyFreeze={() =>
+              setProgress((current) => {
+                if (current.coins < FREEZE_COST) return current
+                return {
+                  ...current,
+                  coins: current.coins - FREEZE_COST,
+                  freezeStreaks: current.freezeStreaks + 1,
+                }
+              })
+            }
+            onGoalChange={(goalId) =>
+              setProgress((current) => ({
+                ...current,
+                personalGoal: personalGoals.find((goal) => goal.id === goalId) ?? current.personalGoal,
+              }))
+            }
+          />
+        )}
       </section>
 
       <nav className="bottom-nav" aria-label="Navegacao inferior">
@@ -545,7 +774,7 @@ function activeTitle(tab: Tab) {
     cards: 'Revisao inteligente',
     speak: 'Fala e tons',
     write: 'Escrita hanzi',
-    clips: 'Clips e sons',
+    clips: 'Estudar com cultura',
     mascot: 'Seu companheiro Koi',
     profile: 'Seu ritmo',
   }
@@ -563,6 +792,26 @@ function getNextLessonId(currentLessonId: string) {
 
 function normalizeSpeechText(text: string) {
   return text.replace(/[?？,，.。]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function normalizeAnswer(text: string) {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[?？,，.。!！]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function mistakeLabel(type: LearningMistake['type']) {
+  const labels: Record<LearningMistake['type'], string> = {
+    lesson: 'Licao',
+    card: 'Cartao',
+    writing: 'Escrita',
+    speech: 'Fala',
+  }
+  return labels[type]
 }
 
 function RedTailLogo() {
@@ -760,16 +1009,22 @@ function CardsView({
   dueCount,
   flipped,
   progress,
+  openMistakes,
   onFlip,
   onReview,
+  onResolveMistake,
+  onMissMistake,
   onSpeak,
 }: {
   activeCard: (typeof allPhrases)[number]
   dueCount: number
   flipped: boolean
   progress: LearningProgress
+  openMistakes: LearningMistake[]
   onFlip: () => void
   onReview: (difficulty: Difficulty) => void
+  onResolveMistake: (mistake: LearningMistake) => void
+  onMissMistake: (mistake: LearningMistake, answer: string) => void
   onSpeak: (text: string) => void
 }) {
   const reviewed = Object.values(progress.cards).reduce((total, card) => total + card.reviewed, 0)
@@ -830,7 +1085,108 @@ function CardsView({
           })}
         </div>
       </section>
+
+      <MistakeReviewPanel
+        mistakes={openMistakes}
+        onResolve={onResolveMistake}
+        onMiss={onMissMistake}
+        onSpeak={onSpeak}
+      />
     </div>
+  )
+}
+
+function MistakeReviewPanel({
+  mistakes,
+  onResolve,
+  onMiss,
+  onSpeak,
+}: {
+  mistakes: LearningMistake[]
+  onResolve: (mistake: LearningMistake) => void
+  onMiss: (mistake: LearningMistake, answer: string) => void
+  onSpeak: (text: string) => void
+}) {
+  const [answer, setAnswer] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const activeMistake = mistakes[0]
+
+  if (!activeMistake) {
+    return (
+      <section className="mistake-panel cleared">
+        <div className="mistake-panel-header">
+          <div>
+            <p className="eyebrow">Erros</p>
+            <h2>Fila limpa</h2>
+          </div>
+          <CheckCircle2 size={26} />
+        </div>
+        <p>Nenhum erro bloqueando a evolucao do mascote.</p>
+      </section>
+    )
+  }
+
+  const isWritingMistake = activeMistake.type === 'writing'
+
+  function submitMistakeReview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!activeMistake) return
+
+    if (isWritingMistake) {
+      setFeedback('Esse erro sai da fila quando voce validar o hanzi na aba Escrita.')
+      return
+    }
+
+    if (normalizeAnswer(answer) === normalizeAnswer(activeMistake.expected)) {
+      setAnswer('')
+      setFeedback('')
+      onResolve(activeMistake)
+      return
+    }
+
+    onMiss(activeMistake, answer || 'Resposta vazia')
+    setFeedback('Ainda nao. Veja a dica e tente outra vez.')
+  }
+
+  return (
+    <section className="mistake-panel">
+      <div className="mistake-panel-header">
+        <div>
+          <p className="eyebrow">Treinar erros</p>
+          <h2>{mistakes.length} erro{mistakes.length === 1 ? '' : 's'} bloqueando evolucao</h2>
+        </div>
+        <LockKeyhole size={26} />
+      </div>
+
+      <article className="mistake-card">
+        <span>{mistakeLabel(activeMistake.type)}</span>
+        <strong>{activeMistake.prompt}</strong>
+        <small>{activeMistake.helper}</small>
+        <div className="mistake-actions">
+          <button className="icon-action" type="button" onClick={() => onSpeak(activeMistake.prompt)} title="Ouvir">
+            <Volume2 size={18} />
+          </button>
+          <span>{activeMistake.attempts} tentativa{activeMistake.attempts === 1 ? '' : 's'}</span>
+        </div>
+      </article>
+
+      <form className="mistake-form" onSubmit={submitMistakeReview}>
+        <label>
+          {isWritingMistake ? 'Volte para Escrita e valide o caractere' : 'Digite a resposta certa'}
+          <input
+            value={answer}
+            disabled={isWritingMistake}
+            onChange={(event) => setAnswer(event.target.value)}
+            placeholder={isWritingMistake ? activeMistake.expected : 'traducao em portugues'}
+          />
+        </label>
+        <button className="primary-action" type="submit">
+          <CheckCircle2 size={18} />
+          Conferir
+        </button>
+      </form>
+      <p className={feedback ? 'feedback error' : 'feedback'}>{feedback || ' '}</p>
+    </section>
   )
 }
 
@@ -907,18 +1263,27 @@ function SpeakView({
 
 function WritingView({
   onSpeak,
+  openMistakes,
+  onPracticeMistake,
   onCompletePractice,
 }: {
   onSpeak: (text: string) => void
-  onCompletePractice: () => void
+  openMistakes: LearningMistake[]
+  onPracticeMistake: (character: WritingCharacter, reason: string) => void
+  onCompletePractice: (character: WritingCharacter) => void
 }) {
   const [selectedId, setSelectedId] = useState(writingCharacters[0].id)
   const [strokesDrawn, setStrokesDrawn] = useState(0)
+  const [drawnStrokes, setDrawnStrokes] = useState<DrawPoint[][]>([])
+  const [canvasSize, setCanvasSize] = useState({ width: 430, height: 430 })
+  const [validationMessage, setValidationMessage] = useState('')
   const [practiceDone, setPracticeDone] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const isDrawing = useRef(false)
+  const activeStroke = useRef<DrawPoint[]>([])
   const selectedCharacter =
     writingCharacters.find((character) => character.id === selectedId) ?? writingCharacters[0]
+  const selectedOpenMistake = openMistakes.find((mistake) => mistake.itemId === selectedCharacter.id)
 
   function setupCanvas() {
     const canvas = canvasRef.current
@@ -933,6 +1298,7 @@ function WritingView({
       canvas.width = nextWidth
       canvas.height = nextHeight
     }
+    setCanvasSize({ width: rect.width, height: rect.height })
 
     const context = canvas.getContext('2d')
     if (!context) return null
@@ -964,8 +1330,10 @@ function WritingView({
     isDrawing.current = true
     drawing.context.beginPath()
     drawing.context.moveTo(point.x, point.y)
+    activeStroke.current = [point]
     setStrokesDrawn((current) => current + 1)
     setPracticeDone(false)
+    setValidationMessage('')
   }
 
   function draw(event: ReactPointerEvent<HTMLCanvasElement>) {
@@ -976,9 +1344,18 @@ function WritingView({
     const point = pointFromEvent(event)
     drawing.context.lineTo(point.x, point.y)
     drawing.context.stroke()
+    const lastPoint = activeStroke.current[activeStroke.current.length - 1]
+    if (!lastPoint || distanceBetween(lastPoint, point) > 4) {
+      activeStroke.current.push(point)
+    }
   }
 
   function stopDrawing() {
+    if (activeStroke.current.length > 1) {
+      const stroke = activeStroke.current
+      setDrawnStrokes((current) => [...current, stroke])
+    }
+    activeStroke.current = []
     isDrawing.current = false
   }
 
@@ -988,17 +1365,25 @@ function WritingView({
       drawing.context.clearRect(0, 0, drawing.rect.width, drawing.rect.height)
     }
     setStrokesDrawn(0)
+    setDrawnStrokes([])
+    setValidationMessage('')
     setPracticeDone(false)
   }
 
   function completeWritingPractice(character: WritingCharacter) {
-    if (!isStrokeValid) return
+    if (!validation.ok) {
+      const reason = validation.message
+      setValidationMessage(reason)
+      onPracticeMistake(character, reason)
+      return
+    }
     setPracticeDone(true)
-    onCompletePractice()
+    setValidationMessage('Hanzi validado e erro removido da fila, se existia.')
+    onCompletePractice(character)
     onSpeak(character.character)
   }
 
-  const isStrokeValid = strokesDrawn > 0 && Math.abs(strokesDrawn - selectedCharacter.strokes) <= 1
+  const validation = validateWritingAttempt(selectedCharacter, drawnStrokes, strokesDrawn, canvasSize)
 
   return (
     <div className="writing-layout">
@@ -1007,6 +1392,7 @@ function WritingView({
           <div>
             <p className="eyebrow">Treino de escrita</p>
             <h2>Trace o hanzi no grid.</h2>
+            {selectedOpenMistake && <span className="writing-error-badge">Erro pendente</span>}
           </div>
           <button className="icon-action" type="button" onClick={() => onSpeak(selectedCharacter.character)} title="Ouvir">
             <Volume2 size={20} />
@@ -1042,19 +1428,19 @@ function WritingView({
           <button
             className="primary-action"
             type="button"
-            disabled={!isStrokeValid}
+            disabled={strokesDrawn === 0}
             onClick={() => completeWritingPractice(selectedCharacter)}
           >
             <CheckCircle2 size={18} />
             Validar
           </button>
         </div>
-        <p className={practiceDone ? 'feedback good' : (strokesDrawn > 0 && !isStrokeValid ? 'feedback error' : 'feedback')}>
+        <p className={practiceDone ? 'feedback good' : (strokesDrawn > 0 && !validation.ok ? 'feedback error' : 'feedback')}>
           {practiceDone
             ? `Treino salvo. Voce fez ${strokesDrawn} tracos.`
-            : (strokesDrawn > 0 && !isStrokeValid
-              ? `Incorreto: você fez ${strokesDrawn} traços. Tente focar em ${selectedCharacter.strokes} traços principais.`
-              : `Meta: ${selectedCharacter.strokes} tracos principais.`)}
+            : (strokesDrawn > 0 && !validation.ok
+              ? (validationMessage || validation.message)
+              : `Meta: ${selectedCharacter.strokes} tracos principais e forma dentro das zonas do hanzi.`)}
         </p>
       </section>
 
@@ -1068,6 +1454,8 @@ function WritingView({
               onClick={() => {
                 setSelectedId(character.id)
                 setStrokesDrawn(0)
+                setDrawnStrokes([])
+                setValidationMessage('')
                 setPracticeDone(false)
               }}
             >
@@ -1104,27 +1492,131 @@ function WritingView({
   )
 }
 
+function validateWritingAttempt(
+  character: WritingCharacter,
+  strokes: DrawPoint[][],
+  strokesDrawn: number,
+  canvasSize: { width: number; height: number },
+) {
+  if (strokesDrawn <= 0) {
+    return { ok: false, message: `Meta: ${character.strokes} tracos principais.` }
+  }
+
+  if (strokesDrawn !== character.strokes) {
+    return {
+      ok: false,
+      message: `Incorreto: voce fez ${strokesDrawn} tracos. Este hanzi pede ${character.strokes} tracos principais.`,
+    }
+  }
+
+  const points = strokes.flat()
+  if (points.length < Math.max(6, character.strokes * 3)) {
+    return { ok: false, message: 'Trace os movimentos completos antes de validar.' }
+  }
+
+  const bounds = getPointBounds(points)
+  const widthRatio = bounds.width / Math.max(1, canvasSize.width)
+  const heightRatio = bounds.height / Math.max(1, canvasSize.height)
+  const pathLength = strokes.reduce((total, stroke) => total + getPathLength(stroke), 0)
+  const template = writingValidationTemplates[character.id] ?? {
+    cells: ['1-0', '0-1', '1-1', '2-1', '1-2'],
+    minWidthRatio: 0.4,
+    minHeightRatio: 0.45,
+    minPathLength: WRITING_MIN_PATH,
+  }
+
+  if (widthRatio < template.minWidthRatio || heightRatio < template.minHeightRatio) {
+    return { ok: false, message: 'A forma ficou pequena demais ou concentrada. Use mais do grid do hanzi.' }
+  }
+
+  if (pathLength < template.minPathLength) {
+    return { ok: false, message: 'O caminho desenhado ficou curto demais para esse caractere.' }
+  }
+
+  const touchedCells = new Set(
+    points.map((point) => {
+      const col = Math.min(2, Math.max(0, Math.floor((point.x / Math.max(1, canvasSize.width)) * 3)))
+      const row = Math.min(2, Math.max(0, Math.floor((point.y / Math.max(1, canvasSize.height)) * 3)))
+      return `${col}-${row}`
+    }),
+  )
+  const missingCells = template.cells.filter((cell) => !touchedCells.has(cell))
+
+  if (missingCells.length > Math.max(1, Math.floor(template.cells.length * 0.25))) {
+    return { ok: false, message: 'A forma nao bateu com as zonas principais do hanzi. Siga a sombra do caractere.' }
+  }
+
+  return { ok: true, message: 'Hanzi validado.' }
+}
+
+function getPointBounds(points: DrawPoint[]) {
+  const xs = points.map((point) => point.x)
+  const ys = points.map((point) => point.y)
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+  return {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    width: maxX - minX,
+    height: maxY - minY,
+  }
+}
+
+function getPathLength(points: DrawPoint[]) {
+  return points.reduce((total, point, index) => {
+    if (index === 0) return total
+    return total + distanceBetween(points[index - 1], point)
+  }, 0)
+}
+
+function distanceBetween(left: DrawPoint, right: DrawPoint) {
+  return Math.hypot(left.x - right.x, left.y - right.y)
+}
+
 function ClipsView({
   clipTitle,
   clipUrl,
   clipTheme,
+  studyMoments,
   savedClips,
   onAddClip,
   onTitleChange,
   onUrlChange,
   onThemeChange,
+  onSpeak,
 }: {
   clipTitle: string
   clipUrl: string
   clipTheme: string
+  studyMoments: StudyMoment[]
   savedClips: LearningProgress['savedClips']
   onAddClip: (event: FormEvent<HTMLFormElement>) => void
   onTitleChange: (value: string) => void
   onUrlChange: (value: string) => void
   onThemeChange: (value: string) => void
+  onSpeak: (text: string) => void
 }) {
   return (
     <div className="clips-layout">
+      <section className="study-moments">
+        <div className="clip-library-header">
+          <div>
+            <p className="eyebrow">Aba estudar</p>
+            <h2>Memes, musicas e cultura para fixar frases.</h2>
+          </div>
+          <Target size={26} />
+        </div>
+        <div className="study-moment-grid">
+          {studyMoments.map((moment) => (
+            <StudyMomentCard key={moment.id} moment={moment} onSpeak={onSpeak} />
+          ))}
+        </div>
+      </section>
+
       <section className="clip-library">
         <div className="clip-library-header">
           <div>
@@ -1178,6 +1670,27 @@ function ClipsView({
   )
 }
 
+function StudyMomentCard({ moment, onSpeak }: { moment: StudyMoment; onSpeak: (text: string) => void }) {
+  return (
+    <article className={`study-moment ${moment.type}`}>
+      <div className="study-moment-top">
+        <span>{moment.source}</span>
+        <small>{moment.level}</small>
+      </div>
+      <strong>{moment.title}</strong>
+      <button className="study-phrase" type="button" onClick={() => onSpeak(moment.phrase)} title="Ouvir frase">
+        <span>{moment.phrase}</span>
+        <small>{moment.pinyin}</small>
+      </button>
+      <p>{moment.meaning}</p>
+      <small>{moment.note}</small>
+      <a href={moment.searchUrl} target="_blank" rel="noreferrer">
+        Abrir referencia
+      </a>
+    </article>
+  )
+}
+
 function ClipCard({
   title,
   source,
@@ -1217,12 +1730,29 @@ function ClipCard({
   )
 }
 
-function ProfileView({ progress, totalMinutes }: { progress: LearningProgress; totalMinutes: number }) {
+function ProfileView({
+  progress,
+  totalMinutes,
+  openMistakeCount,
+  userLevel,
+  onBuyFreeze,
+  onGoalChange,
+}: {
+  progress: LearningProgress
+  totalMinutes: number
+  openMistakeCount: number
+  userLevel: number
+  onBuyFreeze: () => void
+  onGoalChange: (goalId: LearningProgress['personalGoal']['id']) => void
+}) {
   const stats = [
+    { label: 'Nivel', value: userLevel, icon: Trophy },
     { label: 'XP total', value: progress.xp, icon: Star },
+    { label: 'Moedas', value: progress.coins, icon: Target },
     { label: 'Sequencia', value: progress.streak, icon: Flame },
     { label: 'Minutos', value: totalMinutes, icon: CalendarCheck },
     { label: 'Freeze', value: progress.freezeStreaks, icon: ShieldCheck },
+    { label: 'Erros', value: openMistakeCount, icon: LockKeyhole },
     { label: 'Fala', value: progress.speakingSessions, icon: Mic },
     { label: 'Hanzi', value: progress.writingSessions, icon: Brush },
   ]
@@ -1230,14 +1760,18 @@ function ProfileView({ progress, totalMinutes }: { progress: LearningProgress; t
   const mockRankings = [
     { name: 'Você', xp: progress.xp, current: true },
     { name: 'Ana S.', xp: progress.xp + 120, current: false },
+    { name: 'Equipe Dragao', xp: Math.max(0, progress.xp + 70), current: false },
     { name: 'Lucas M.', xp: Math.max(0, progress.xp - 50), current: false },
   ].sort((a, b) => b.xp - a.xp)
+
+  const goalProgress = Math.min(100, Math.round((totalMinutes / progress.personalGoal.targetMinutes) * 100))
 
   return (
     <div className="profile-layout">
       <section className="profile-hero">
         <p className="eyebrow">RedTail Score</p>
         <h2>{progress.xp < 150 ? 'Explorador HSK 1' : 'Aprendiz consistente'}</h2>
+        <span>Nivel {userLevel} - {progress.personalGoal.label}</span>
         <div className="profile-meter">
           <span style={{ width: `${Math.min(100, progress.xp / 3)}%` }}></span>
         </div>
@@ -1250,6 +1784,30 @@ function ProfileView({ progress, totalMinutes }: { progress: LearningProgress; t
             <strong>{item.value}</strong>
           </article>
         ))}
+      </section>
+
+      <section className="goals-panel">
+        <div className="ranking-header">
+          <p className="eyebrow">Meta pessoal real</p>
+          <h2>{progress.personalGoal.label}</h2>
+        </div>
+        <p>{progress.personalGoal.focus}</p>
+        <div className="profile-meter dark">
+          <span style={{ width: `${goalProgress}%` }}></span>
+        </div>
+        <small>{totalMinutes}/{progress.personalGoal.targetMinutes} min no objetivo</small>
+        <div className="goal-options">
+          {personalGoals.map((goal) => (
+            <button
+              key={goal.id}
+              className={goal.id === progress.personalGoal.id ? 'active' : ''}
+              type="button"
+              onClick={() => onGoalChange(goal.id)}
+            >
+              {goal.label}
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="ranking-panel">
@@ -1268,6 +1826,28 @@ function ProfileView({ progress, totalMinutes }: { progress: LearningProgress; t
               <span className="ranking-name">Revisar 3 cartões</span>
               <span className="ranking-xp">{progress.dailyGoals.cards >= 3 ? '✅' : `${progress.dailyGoals.cards}/3`}</span>
            </div>
+           <div className="ranking-item">
+              <span className="ranking-pos">🎙</span>
+              <span className="ranking-name">Fazer 1 treino de fala</span>
+              <span className="ranking-xp">{progress.dailyGoals.speaking >= 1 ? '✅' : `${progress.dailyGoals.speaking}/1`}</span>
+           </div>
+           <div className="ranking-item">
+              <span className="ranking-pos">字</span>
+              <span className="ranking-name">Validar 1 hanzi</span>
+              <span className="ranking-xp">{progress.dailyGoals.writing >= 1 ? '✅' : `${progress.dailyGoals.writing}/1`}</span>
+           </div>
+        </div>
+
+        <div className="freeze-shop">
+          <div>
+            <p className="eyebrow">Streak freeze</p>
+            <strong>{progress.freezeStreaks} salva-dia</strong>
+            <span>Compra com moedas para proteger a sequencia quando faltar um dia.</span>
+          </div>
+          <button className="primary-action" type="button" disabled={progress.coins < FREEZE_COST} onClick={onBuyFreeze}>
+            <ShieldCheck size={18} />
+            {FREEZE_COST} moedas
+          </button>
         </div>
 
         <div className="ranking-header">
@@ -1288,9 +1868,9 @@ function ProfileView({ progress, totalMinutes }: { progress: LearningProgress; t
       <section className="roadmap-band">
         <p className="eyebrow">Proximas camadas</p>
         <div className="roadmap-items">
-          <span>HSK 1 completo</span>
-          <span>Dialogos por IA</span>
-          <span>Buddy streak</span>
+          <span>Batalha de mascotes</span>
+          <span>Guildas tematicas</span>
+          <span>Recompensas reais</span>
         </div>
       </section>
     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
   type EvolutionStage,
@@ -16,13 +16,22 @@ import {
 export function MascotWidget({
   mascot,
   onRename,
+  onSwitchPath,
+  blockedByMistakes = 0,
+  userLevel = 1,
+  coins = 0,
+  switchCost = 300,
   compact = false,
 }: {
   mascot: MascotState
   onRename?: (name: string) => void
+  onSwitchPath?: () => void
+  blockedByMistakes?: number
+  userLevel?: number
+  coins?: number
+  switchCost?: number
   compact?: boolean
 }) {
-  const [dialogue, setDialogue] = useState('')
   const [showDialogue, setShowDialogue] = useState(false)
   const [isNaming, setIsNaming] = useState(false)
   const [nameInput, setNameInput] = useState(mascot.name)
@@ -30,14 +39,18 @@ export function MascotWidget({
   const info = getStageInfo(mascot.stage, mascot.evolutionPath)
   const progress = stageProgress(mascot.evoXp, mascot.stage)
   const toNext = xpToNextStage(mascot.evoXp, mascot.stage)
+  const canSwitchPath = !!onSwitchPath && userLevel >= 10 && coins >= switchCost
+  const finalStageLabel = mascot.evolutionPath === 'peng' ? '🦅 Gavião Peng Celestial!' : '🐉 Dragão Celestial!'
+  const dialogue = useMemo(() => getMascotDialogue(mascot), [mascot])
 
   useEffect(() => {
-    const msg = getMascotDialogue(mascot)
-    setDialogue(msg)
-    setShowDialogue(true)
-    const timer = setTimeout(() => setShowDialogue(false), 6000)
-    return () => clearTimeout(timer)
-  }, [mascot.mood, mascot.stage])
+    const openTimer = window.setTimeout(() => setShowDialogue(true), 0)
+    const closeTimer = window.setTimeout(() => setShowDialogue(false), 6000)
+    return () => {
+      window.clearTimeout(openTimer)
+      window.clearTimeout(closeTimer)
+    }
+  }, [dialogue])
 
   function handleRename() {
     if (onRename && nameInput.trim()) {
@@ -57,6 +70,7 @@ export function MascotWidget({
           <div className="mascot-evo-bar-compact">
             <span style={{ width: `${progress}%`, '--stage-color': info.color } as CSSProperties}></span>
           </div>
+          {blockedByMistakes > 0 && <small className="mascot-lock-compact">{blockedByMistakes} erros</small>}
         </div>
         {showDialogue && (
           <div className="mascot-bubble-compact">
@@ -111,11 +125,18 @@ export function MascotWidget({
       </div>
 
       <div className="mascot-info-grid">
+        {blockedByMistakes > 0 && (
+          <div className="mascot-lock">
+            <strong>Evolucao bloqueada</strong>
+            <span>Corrija {blockedByMistakes} erro{blockedByMistakes === 1 ? '' : 's'} para o mascote voltar a evoluir.</span>
+          </div>
+        )}
+
         <div className="mascot-evo-progress">
           <div className="mascot-evo-labels">
             <span>{info.title}</span>
             {mascot.stage < 7 && <span>{toNext} XP para evoluir</span>}
-            {mascot.stage >= 7 && <span>🐉 Dragão Celestial!</span>}
+            {mascot.stage >= 7 && <span>{finalStageLabel}</span>}
           </div>
           <div className="mascot-evo-bar">
             <span
@@ -152,6 +173,19 @@ export function MascotWidget({
             </div>
           </div>
         )}
+
+        {onSwitchPath && (
+          <div className="mascot-switch">
+            <div>
+              <span className="eyebrow">Destino alternativo</span>
+              <strong>{mascot.evolutionPath === 'dragon' ? 'Gavião Peng' : 'Dragão'}</strong>
+              <small>Nivel 10 e {switchCost} moedas para trocar.</small>
+            </div>
+            <button type="button" disabled={!canSwitchPath} onClick={onSwitchPath}>
+              Trocar
+            </button>
+          </div>
+        )}
       </div>
 
       <p className="mascot-lore">{info.description}</p>
@@ -170,7 +204,7 @@ function accessoryLabel(id: string): string {
     'cloud-trail': '☁️ Rastro de Nuvens',
     'blue-scales': '🌊 Escamas Azuis',
     'feather-buds': '🪶 Brotos de Penas',
-    'peng-wings': '🦅 Asas de Peng',
+    'peng-wings': '🦅 Asas de Gavião Peng',
     'wind-aura': '🌪️ Aura de Vento',
     'star-crown': '✨ Coroa Estelar',
     'galaxy-trail': '🌌 Rastro Galáctico',

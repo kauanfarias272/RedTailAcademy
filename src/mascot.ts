@@ -2,11 +2,12 @@
  * Mascot Evolution System — RedTail Academy
  *
  * Inspired by the Chinese legend of the Koi (鲤鱼) that swims upstream
- * through the Dragon Gate (龙门) and transforms into a dragon (龙).
+ * through the Dragon Gate (龙门) and transforms into a dragon (龙),
+ * or follows the Kun Peng legend and becomes a giant hawk-like bird.
  *
  * The player's pet starts as a tiny red-tailed fish and evolves as
  * they complete lessons, gaining wings, whiskers, and power until it
- * becomes a majestic dragon at Level 7.
+ * becomes a majestic dragon or a celestial Gavião Peng at Level 7.
  *
  * If the player stops studying, the mascot gradually devolves — losing
  * features and shrinking back toward being a fish.
@@ -147,23 +148,23 @@ export const STAGE_INFO_PENG: Record<EvolutionStage, {
     color: '#8e44ad',
   },
   5: {
-    name: 'Pássaro Peng Jovem',
-    title: '🦅 Pássaro Gigante Peng',
-    description: 'O peixe saltou da água e virou pássaro! Suas asas cobrem o céu quando ele voa.',
+    name: 'Gavião Peng Jovem',
+    title: '🦅 Gavião Peng',
+    description: 'O peixe saltou da água e virou um gavião lendário. Suas asas cortam o vento como a lenda do Peng.',
     emoji: '🦅',
     color: '#16a085',
   },
   6: {
-    name: 'Peng das Nuvens',
+    name: 'Gavião das Nuvens',
     title: '🌪️ Peng dos Ventos',
-    description: 'Ele viaja a milhares de quilômetros por dia com uma única batida de asas, dominando as tempestades.',
+    description: 'Ele viaja grandes distâncias com uma única batida de asas, dominando as tempestades e os tons.',
     emoji: '🌪️',
     color: '#1abc9c',
   },
   7: {
-    name: 'Peng Celestial',
-    title: '🌌 Kūn Péng — O Pássaro Místico',
-    description: 'O lendário Peng que viaja entre o oceano celestial e as estrelas. O conhecimento pleno o libertou.',
+    name: 'Gavião Peng Celestial',
+    title: '🌌 Kūn Péng — O Gavião Místico',
+    description: 'O lendário Peng viaja entre o oceano celestial e as estrelas. O conhecimento pleno abriu suas asas.',
     emoji: '🌌',
     color: '#2ecc71',
   },
@@ -329,11 +330,13 @@ export function checkInactivity(state: MascotState, today: string): MascotState 
  * Get the dialogue the mascot says based on its mood and state.
  */
 export function getMascotDialogue(state: MascotState): string {
+  const destiny = state.evolutionPath === 'peng' ? 'Gavião Peng' : 'dragão'
+  const portal = state.evolutionPath === 'peng' ? 'vento do Peng' : 'Portal do Dragão'
   const dialogues: Record<MascotMood, string[]> = {
     excited: [
       '🎉 EVOLUÍ! Estou mais forte! Vamos continuar!',
-      '✨ Sinto o poder do dragão crescendo em mim!',
-      '🐲 O Portal do Dragão está cada vez mais perto!',
+      `✨ Sinto o poder do ${destiny} crescendo em mim!`,
+      `🐲 O ${portal} está cada vez mais perto!`,
     ],
     happy: [
       '嗨! Bom te ver de volta! Vamos estudar?',
@@ -343,7 +346,7 @@ export function getMascotDialogue(state: MascotState): string {
     neutral: [
       'Olá! Já faz um tempinho... Bora estudar?',
       'A correnteza está forte, mas juntos conseguimos!',
-      'Cada lição me deixa mais perto do Portal do Dragão.',
+      `Cada lição me deixa mais perto do ${portal}.`,
     ],
     sad: [
       '😔 Senti sua falta... Estou ficando fraquinho.',
