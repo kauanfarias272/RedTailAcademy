@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { auth } from './firebase'
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User, GoogleAuthProvider, signInWithCredential } from 'firebase/auth'
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User, GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth'
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, FormEvent, PointerEvent as ReactPointerEvent } from 'react'
@@ -500,7 +500,7 @@ function App() {
           speaking: dailyGoals.speaking + 1,
         },
       }
-      return matched
+      const afterMistake = matched
         ? resolveMistake(baseProgress, 'speech', expected)
         : recordMistake(baseProgress, {
             type: 'speech',
@@ -510,6 +510,43 @@ function App() {
             answer: result,
             helper: 'Ouça de novo e tente acompanhar o ritmo da frase.',
           })
+      if (!matched) return afterMistake
+
+      // Map the spoken hanzi to a phrase id and unlock lesson tree progression.
+      const matchedPhrase = allPhrases.find((p) => p.hanzi === expected)
+      if (!matchedPhrase) return afterMistake
+
+      const spoken = afterMistake.spokenPhrases.includes(matchedPhrase.id)
+        ? afterMistake.spokenPhrases
+        : [...afterMistake.spokenPhrases, matchedPhrase.id]
+
+      // If every phrase of any lesson is now spoken, complete that lesson.
+      let completed = afterMistake.completedLessons
+      let bonusXp = 0
+      let bonusCoins = 0
+      let mascot = afterMistake.mascot
+      const dailyLessons = { ...afterMistake.dailyGoals }
+      lessons.forEach((lesson) => {
+        if (completed.includes(lesson.id)) return
+        const allSpoken = lesson.phrases.every((phrase) => spoken.includes(phrase.id))
+        if (allSpoken) {
+          completed = [...completed, lesson.id]
+          bonusXp += lesson.xp
+          bonusCoins += 12
+          dailyLessons.lessons = (dailyLessons.lessons ?? 0) + 1
+          if (!hasOpenMistakes(afterMistake)) mascot = onLessonComplete(mascot, today)
+        }
+      })
+
+      return {
+        ...afterMistake,
+        spokenPhrases: spoken,
+        completedLessons: completed,
+        xp: afterMistake.xp + bonusXp,
+        coins: afterMistake.coins + bonusCoins,
+        dailyGoals: dailyLessons,
+        mascot,
+      }
     })
   }
 
@@ -734,15 +771,36 @@ function App() {
             className="answer-option"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
             onClick={async () => {
-              try {
-                setAuthError('')
-                const result = await FirebaseAuthentication.signInWithGoogle()
-                if (result.credential?.idToken) {
-                  const credential = GoogleAuthProvider.credential(result.credential.idToken)
-                  await signInWithCredential(auth, credential)
+              setAuthError('')
+              // 1) Try the native plugin (Capacitor on Android).
+              if (Capacitor.isNativePlatform()) {
+                try {
+                  const result = await FirebaseAuthentication.signInWithGoogle()
+                  if (result.credential?.idToken) {
+                    const credential = GoogleAuthProvider.credential(result.credential.idToken)
+                    await signInWithCredential(auth, credential)
+                    return
+                  }
+                } catch (err: any) {
+                  // Fall through to the web popup fallback below.
+                  console.warn('Native Google sign-in failed:', err?.message)
                 }
+              }
+              // 2) Web popup fallback (works in any modern browser/WebView with cookies).
+              try {
+                const provider = new GoogleAuthProvider()
+                provider.addScope('email')
+                provider.addScope('profile')
+                await signInWithPopup(auth, provider)
               } catch (err: any) {
-                setAuthError('Google indisponivel: ' + (err?.message || 'tente entrar como convidado abaixo.'))
+                const code = err?.code || ''
+                if (code.includes('operation-not-allowed') || code.includes('not-enabled')) {
+                  setAuthError('O provedor Google nao esta habilitado no Firebase Console deste projeto. Use convidado por enquanto.')
+                } else if (code.includes('popup-blocked') || code.includes('popup-closed')) {
+                  setAuthError('O popup foi bloqueado. Libere popups ou use convidado abaixo.')
+                } else {
+                  setAuthError('Google indisponivel: ' + (err?.message || 'use convidado abaixo.'))
+                }
               }
             }}
           >

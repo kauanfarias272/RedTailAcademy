@@ -40,6 +40,7 @@ export type LearningProgress = {
   completedLessons: string[]
   speakingSessions: number
   writingSessions: number
+  spokenPhrases: string[]
   cards: Record<string, CardProgress>
   savedClips: SavedClip[]
   mistakes: LearningMistake[]
@@ -81,6 +82,7 @@ export const defaultProgress: LearningProgress = {
   completedLessons: [],
   speakingSessions: 0,
   writingSessions: 0,
+  spokenPhrases: [],
   cards: {},
   savedClips: [],
   mistakes: [],
@@ -107,6 +109,7 @@ export function useStoredProgress() {
           ...parsed,
           coins: typeof parsed.coins === 'number' ? parsed.coins : defaultProgress.coins,
           mistakes: Array.isArray(parsed.mistakes) ? parsed.mistakes : [],
+          spokenPhrases: Array.isArray(parsed.spokenPhrases) ? parsed.spokenPhrases : [],
           mascot: { ...defaultMascotState, ...(parsed.mascot ?? {}) },
           dailyGoals: normalizeDailyGoals(parsed.dailyGoals, parsed.dailyGoals?.date ?? ''),
           personalGoal: normalizePersonalGoal(parsed.personalGoal),
