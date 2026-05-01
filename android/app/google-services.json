@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "179204091097",
+    "project_id": "redtailacademy-883be",
+    "storage_bucket": "redtailacademy-883be.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:179204091097:android:1234567890abcdef",
+        "android_client_info": {
+          "package_name": "app.redtail.academy"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "179204091097-fakeclientid1234567890.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.redtail.academy",
+            "certificate_hash": "8dd2300740929d67c15537789aa01c5361a03502"
+          }
+        },
+        {
+          "client_id": "179204091097-fakeclientidweb0987654321.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCofc89ipwr0ezS9zz0svAAeotEJDPr1AA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "179204091097-fakeclientidweb0987654321.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
