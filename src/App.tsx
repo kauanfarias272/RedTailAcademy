@@ -33,7 +33,7 @@ import {
 } from 'lucide-react'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { auth, deleteCurrentAccount } from './firebase'
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User, GoogleAuthProvider, signInWithCredential, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth'
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User, GoogleAuthProvider, signInWithCredential, signInWithRedirect, getRedirectResult } from 'firebase/auth'
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, FormEvent, PointerEvent as ReactPointerEvent } from 'react'
@@ -209,7 +209,6 @@ function App() {
   const [lastSpeechMatched, setLastSpeechMatched] = useState(false)
   const [mandarinVoice, setMandarinVoice] = useState<SpeechSynthesisVoice | null>(null)
   const [now, setNow] = useState(0)
-  const [missionsOpen, setMissionsOpen] = useState(false)
   const [clan, setClan] = useState<ClanDoc | null>(null)
   const [clanMembers, setClanMembers] = useState<ClanMember[]>([])
   const [topClans, setTopClans] = useState<ClanDoc[]>([])
@@ -940,31 +939,18 @@ function App() {
                     return
                   }
                 } catch (err: any) {
-                  // Fall through to the web popup fallback below.
+                  // Fall through to the web redirect below.
                   console.warn('Native Google sign-in failed:', err?.message)
                 }
               }
-              // 2) Web popup with redirect fallback (works even when popups are blocked).
+              // 2) Use redirect directly — popups are blocked on most mobile browsers.
               const provider = new GoogleAuthProvider()
               provider.addScope('email')
               provider.addScope('profile')
               try {
-                await signInWithPopup(auth, provider)
+                await signInWithRedirect(auth, provider)
               } catch (err: any) {
                 const code = err?.code || ''
-                if (
-                  code.includes('popup-blocked') ||
-                  code.includes('popup-closed') ||
-                  code.includes('cancelled-popup-request')
-                ) {
-                  try {
-                    await signInWithRedirect(auth, provider)
-                    return
-                  } catch (redirectErr: any) {
-                    setAuthError('Falha no redirecionamento Google: ' + (redirectErr?.message || 'tente convidado abaixo.'))
-                    return
-                  }
-                }
                 if (code.includes('operation-not-allowed') || code.includes('not-enabled')) {
                   setAuthError('O provedor Google nao esta habilitado no Firebase Console deste projeto. Use convidado por enquanto.')
                 } else {
@@ -1061,46 +1047,7 @@ function App() {
             <h1>{activeTitle(activeTab)}</h1>
           </div>
           <div className="topbar-actions">
-            <button
-              type="button"
-              className={`hud-pill hud-missions${missionsOpen ? ' open' : ''}`}
-              onClick={() => setMissionsOpen((current) => !current)}
-              title="Missoes diarias"
-            >
-              <Target size={16} />
-              <strong>
-                {(progress.dailyGoals.lessons >= 1 ? 1 : 0) +
-                  (progress.dailyGoals.cards >= 3 ? 1 : 0) +
-                  (progress.dailyGoals.speaking >= 1 ? 1 : 0) +
-                  (progress.dailyGoals.writing >= 1 ? 1 : 0)}
-                /4
-              </strong>
-              <span>missoes</span>
-            </button>
-            {missionsOpen && (
-              <div className="missions-popover" role="dialog" aria-label="Missoes do dia">
-                <p className="eyebrow">Missoes do dia</p>
-                <ul>
-                  <li className={progress.dailyGoals.lessons >= 1 ? 'done' : ''}>
-                    <span>Fazer 1 licao</span>
-                    <strong>{progress.dailyGoals.lessons >= 1 ? '✓' : '0/1'}</strong>
-                  </li>
-                  <li className={progress.dailyGoals.cards >= 3 ? 'done' : ''}>
-                    <span>Revisar 3 cartoes</span>
-                    <strong>{progress.dailyGoals.cards >= 3 ? '✓' : `${progress.dailyGoals.cards}/3`}</strong>
-                  </li>
-                  <li className={progress.dailyGoals.speaking >= 1 ? 'done' : ''}>
-                    <span>1 treino de fala</span>
-                    <strong>{progress.dailyGoals.speaking >= 1 ? '✓' : `${progress.dailyGoals.speaking}/1`}</strong>
-                  </li>
-                  <li className={progress.dailyGoals.writing >= 1 ? 'done' : ''}>
-                    <span>Validar 1 hanzi</span>
-                    <strong>{progress.dailyGoals.writing >= 1 ? '✓' : `${progress.dailyGoals.writing}/1`}</strong>
-                  </li>
-                </ul>
-              </div>
-            )}
-            <div className="hud-pill hud-coins" title={`Voce tem ${progress.coins} moedas. Gaste em Freeze Streak (${FREEZE_COST}) ou troca de evolucao do mascote (${MASCOT_SWITCH_COST}).`}>
+            <div className="hud-pill hud-coins" title={`Voce tem ${progress.coins} moedas`}>
               <Target size={16} />
               <strong>{progress.coins}</strong>
               <span>moedas</span>
@@ -1110,7 +1057,7 @@ function App() {
               <strong>{progress.streak}</strong>
               <span>streak</span>
             </div>
-            <div className="hud-pill hud-freeze" title="Freeze streaks disponiveis (compre na aba Perfil)">
+            <div className="hud-pill hud-freeze" title="Freeze streaks disponiveis">
               <ShieldCheck size={16} />
               <strong>{progress.freezeStreaks}</strong>
               <span>freeze</span>
@@ -1145,6 +1092,7 @@ function App() {
             onChoose={chooseQuizAnswer}
             onSpeak={speak}
             onAdvanceNow={advanceLessonFlow}
+            dailyGoals={progress.dailyGoals}
           />
         )}
         {activeTab === 'practice' && (
@@ -1446,6 +1394,7 @@ function LearnView({
   onChoose,
   onSpeak,
   onAdvanceNow,
+  dailyGoals,
 }: {
   selectedLesson: Lesson
   selectedLessonId: string
@@ -1463,6 +1412,7 @@ function LearnView({
   onChoose: (choice: string) => void
   onSpeak: (text: string) => void
   onAdvanceNow: () => void
+  dailyGoals: LearningProgress['dailyGoals']
 }) {
   const isCorrect = quizChoice === phrase.portuguese
   const unitCompletion = (unitId: string) => {
@@ -1564,6 +1514,33 @@ function LearnView({
 
   return (
     <div className="learn-grid">
+      <section className="daily-mission-card" aria-label="Missao diaria">
+        <p className="eyebrow">Missao Diaria</p>
+        <h2>Complete uma licao, revise dois cartoes e grave uma frase.</h2>
+        <div className="mission-items">
+          <div className="mission-row">
+            <BookOpen size={18} />
+            <span>Licoes</span>
+            <strong>{dailyGoals.lessons}/12</strong>
+          </div>
+          <div className="mission-row">
+            <Layers3 size={18} />
+            <span>Cartoes</span>
+            <strong>{dailyGoals.cards}</strong>
+          </div>
+          <div className="mission-row">
+            <Mic size={18} />
+            <span>Fala</span>
+            <strong>{dailyGoals.speaking}</strong>
+          </div>
+          <div className="mission-row">
+            <Brush size={18} />
+            <span>Hanzi</span>
+            <strong>{dailyGoals.writing}</strong>
+          </div>
+        </div>
+      </section>
+
       <section className="lesson-tree-panel" aria-label="Trilha do Carpa-Dragao">
         <div className="tree-canopy">
           <p className="eyebrow">Lenda do Carpa-Dragao</p>
