@@ -54,6 +54,7 @@ export type LearningProgress = {
     date: string
   }
   personalGoal: PersonalGoal
+  clanId: string | null
 }
 
 export type SavedClip = {
@@ -96,6 +97,7 @@ export const defaultProgress: LearningProgress = {
     date: '',
   },
   personalGoal: personalGoals[0],
+  clanId: null,
 }
 
 export function useStoredProgress() {
@@ -113,6 +115,7 @@ export function useStoredProgress() {
           mascot: { ...defaultMascotState, ...(parsed.mascot ?? {}) },
           dailyGoals: normalizeDailyGoals(parsed.dailyGoals, parsed.dailyGoals?.date ?? ''),
           personalGoal: normalizePersonalGoal(parsed.personalGoal),
+          clanId: typeof parsed.clanId === 'string' ? parsed.clanId : null,
         }
       }
       return defaultProgress

@@ -14,6 +14,7 @@ import {
   Layers3,
   Library,
   LockKeyhole,
+  LogIn,
   LogOut,
   Mic,
   Play,
@@ -22,15 +23,17 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  Swords,
   Target,
   Trash2,
   Trophy,
   Undo2,
+  Users,
   Volume2,
 } from 'lucide-react'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { auth, deleteCurrentAccount } from './firebase'
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User, GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth'
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User, GoogleAuthProvider, signInWithCredential, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth'
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, FormEvent, PointerEvent as ReactPointerEvent } from 'react'
@@ -67,8 +70,22 @@ import {
 } from './progress'
 import { checkInactivity, getStageAccessories, onLessonComplete, onCardReview } from './mascot'
 import { MascotWidget } from './MascotWidget'
+import {
+  CLAN_MAX_MEMBERS,
+  clanXpBonus,
+  createClan,
+  fetchMembers,
+  joinClanByCode,
+  leaveClan,
+  recomputeClanTotal,
+  subscribeClan,
+  subscribeTopClans,
+  syncUserDoc,
+  type ClanDoc,
+  type ClanMember,
+} from './clans'
 
-type Tab = 'learn' | 'practice' | 'errors' | 'clips' | 'mascot' | 'profile'
+type Tab = 'learn' | 'practice' | 'errors' | 'clan' | 'clips' | 'mascot' | 'profile'
 type PracticeMode = 'cards' | 'chunks' | 'speak' | 'write'
 type Difficulty = 'hard' | 'good' | 'easy'
 type MicState = 'idle' | 'starting' | 'listening' | 'processing' | 'success' | 'fail' | 'error'
@@ -88,6 +105,7 @@ const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen }> = [
   { id: 'learn', label: 'Trilha', icon: BookOpen },
   { id: 'practice', label: 'Treino', icon: Layers3 },
   { id: 'errors', label: 'Erros', icon: AlertTriangle },
+  { id: 'clan', label: 'Cla', icon: Users },
   { id: 'clips', label: 'Estudar', icon: Headphones },
   { id: 'mascot', label: 'Koi', icon: Fish },
   { id: 'profile', label: 'Perfil', icon: Trophy },
@@ -150,6 +168,10 @@ function App() {
   const effectiveUser = user ?? (guestEmail ? ({ email: guestEmail, uid: 'guest' } as unknown as User) : null)
 
   useEffect(() => {
+    getRedirectResult(auth).catch((err: any) => {
+      const message = err?.message
+      if (message) setAuthError('Google: ' + message)
+    })
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser)
       setIsAuthLoading(false)
@@ -187,6 +209,11 @@ function App() {
   const [lastSpeechMatched, setLastSpeechMatched] = useState(false)
   const [mandarinVoice, setMandarinVoice] = useState<SpeechSynthesisVoice | null>(null)
   const [now, setNow] = useState(0)
+  const [missionsOpen, setMissionsOpen] = useState(false)
+  const [clan, setClan] = useState<ClanDoc | null>(null)
+  const [clanMembers, setClanMembers] = useState<ClanMember[]>([])
+  const [topClans, setTopClans] = useState<ClanDoc[]>([])
+  const [clanError, setClanError] = useState<string>('')
   const autoAdvanceTimer = useRef<number | null>(null)
   const [progress, setProgress] = useStoredProgress()
   const today = useToday()
@@ -227,6 +254,101 @@ function App() {
       return { ...current, dailyGoals: normalizeDailyGoals(current.dailyGoals, today) }
     })
   }, [setProgress, today])
+
+  const isFirebaseUser = Boolean(user && !guestEmail)
+  const clanMember: ClanMember | null = isFirebaseUser && user
+    ? {
+        uid: user.uid,
+        displayName: user.displayName ?? user.email ?? 'Aprendiz',
+        email: user.email ?? '',
+        xp: progress.xp,
+      }
+    : null
+
+  // Subscribe to current clan
+  useEffect(() => {
+    if (!isFirebaseUser || !progress.clanId) {
+      setClan(null)
+      setClanMembers([])
+      return
+    }
+    const unsub = subscribeClan(progress.clanId, async (next) => {
+      setClan(next)
+      if (!next) {
+        setProgress((current) => ({ ...current, clanId: null }))
+        setClanMembers([])
+        return
+      }
+      try {
+        const members = await fetchMembers(next.memberUids)
+        setClanMembers(members)
+      } catch {
+        setClanMembers([])
+      }
+    })
+    return () => unsub()
+  }, [isFirebaseUser, progress.clanId, setProgress])
+
+  // Subscribe to top clans
+  useEffect(() => {
+    if (!isFirebaseUser) {
+      setTopClans([])
+      return
+    }
+    const unsub = subscribeTopClans((list) => setTopClans(list))
+    return () => unsub()
+  }, [isFirebaseUser])
+
+  // Sync user's xp to user doc + recompute clan total when xp changes (debounced)
+  useEffect(() => {
+    if (!isFirebaseUser || !clanMember) return
+    const handle = window.setTimeout(async () => {
+      try {
+        await syncUserDoc({ ...clanMember, clanId: progress.clanId })
+        if (progress.clanId && clan?.memberUids?.length) {
+          await recomputeClanTotal(progress.clanId, clan.memberUids)
+        }
+      } catch {
+        // Silenciosamente ignora — usuario sem permissoes Firestore ou offline.
+      }
+    }, 1500)
+    return () => window.clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFirebaseUser, progress.xp, progress.clanId, clan?.memberUids?.join(',')])
+
+  async function handleCreateClan(name: string, emoji: string) {
+    if (!clanMember) return
+    setClanError('')
+    try {
+      const created = await createClan(clanMember, name, emoji)
+      setProgress((current) => ({ ...current, clanId: created.id }))
+    } catch (err: any) {
+      setClanError(err?.message || 'Nao deu para criar o cla.')
+    }
+  }
+
+  async function handleJoinClan(code: string) {
+    if (!clanMember) return
+    setClanError('')
+    try {
+      const joined = await joinClanByCode(clanMember, code)
+      setProgress((current) => ({ ...current, clanId: joined.id }))
+    } catch (err: any) {
+      setClanError(err?.message || 'Codigo invalido.')
+    }
+  }
+
+  async function handleLeaveClan() {
+    if (!clanMember || !progress.clanId) return
+    const ok = window.confirm('Sair do cla? Voce pode entrar em outro depois.')
+    if (!ok) return
+    try {
+      await leaveClan(clanMember.uid, progress.clanId)
+    } catch {
+      // ignore
+    }
+    setProgress((current) => ({ ...current, clanId: null }))
+  }
 
   // Check mascot inactivity on app load
   useEffect(() => {
@@ -822,18 +944,29 @@ function App() {
                   console.warn('Native Google sign-in failed:', err?.message)
                 }
               }
-              // 2) Web popup fallback (works in any modern browser/WebView with cookies).
+              // 2) Web popup with redirect fallback (works even when popups are blocked).
+              const provider = new GoogleAuthProvider()
+              provider.addScope('email')
+              provider.addScope('profile')
               try {
-                const provider = new GoogleAuthProvider()
-                provider.addScope('email')
-                provider.addScope('profile')
                 await signInWithPopup(auth, provider)
               } catch (err: any) {
                 const code = err?.code || ''
+                if (
+                  code.includes('popup-blocked') ||
+                  code.includes('popup-closed') ||
+                  code.includes('cancelled-popup-request')
+                ) {
+                  try {
+                    await signInWithRedirect(auth, provider)
+                    return
+                  } catch (redirectErr: any) {
+                    setAuthError('Falha no redirecionamento Google: ' + (redirectErr?.message || 'tente convidado abaixo.'))
+                    return
+                  }
+                }
                 if (code.includes('operation-not-allowed') || code.includes('not-enabled')) {
                   setAuthError('O provedor Google nao esta habilitado no Firebase Console deste projeto. Use convidado por enquanto.')
-                } else if (code.includes('popup-blocked') || code.includes('popup-closed')) {
-                  setAuthError('O popup foi bloqueado. Libere popups ou use convidado abaixo.')
                 } else {
                   setAuthError('Google indisponivel: ' + (err?.message || 'use convidado abaixo.'))
                 }
@@ -928,6 +1061,45 @@ function App() {
             <h1>{activeTitle(activeTab)}</h1>
           </div>
           <div className="topbar-actions">
+            <button
+              type="button"
+              className={`hud-pill hud-missions${missionsOpen ? ' open' : ''}`}
+              onClick={() => setMissionsOpen((current) => !current)}
+              title="Missoes diarias"
+            >
+              <Target size={16} />
+              <strong>
+                {(progress.dailyGoals.lessons >= 1 ? 1 : 0) +
+                  (progress.dailyGoals.cards >= 3 ? 1 : 0) +
+                  (progress.dailyGoals.speaking >= 1 ? 1 : 0) +
+                  (progress.dailyGoals.writing >= 1 ? 1 : 0)}
+                /4
+              </strong>
+              <span>missoes</span>
+            </button>
+            {missionsOpen && (
+              <div className="missions-popover" role="dialog" aria-label="Missoes do dia">
+                <p className="eyebrow">Missoes do dia</p>
+                <ul>
+                  <li className={progress.dailyGoals.lessons >= 1 ? 'done' : ''}>
+                    <span>Fazer 1 licao</span>
+                    <strong>{progress.dailyGoals.lessons >= 1 ? '✓' : '0/1'}</strong>
+                  </li>
+                  <li className={progress.dailyGoals.cards >= 3 ? 'done' : ''}>
+                    <span>Revisar 3 cartoes</span>
+                    <strong>{progress.dailyGoals.cards >= 3 ? '✓' : `${progress.dailyGoals.cards}/3`}</strong>
+                  </li>
+                  <li className={progress.dailyGoals.speaking >= 1 ? 'done' : ''}>
+                    <span>1 treino de fala</span>
+                    <strong>{progress.dailyGoals.speaking >= 1 ? '✓' : `${progress.dailyGoals.speaking}/1`}</strong>
+                  </li>
+                  <li className={progress.dailyGoals.writing >= 1 ? 'done' : ''}>
+                    <span>Validar 1 hanzi</span>
+                    <strong>{progress.dailyGoals.writing >= 1 ? '✓' : `${progress.dailyGoals.writing}/1`}</strong>
+                  </li>
+                </ul>
+              </div>
+            )}
             <div className="hud-pill hud-coins" title={`Voce tem ${progress.coins} moedas. Gaste em Freeze Streak (${FREEZE_COST}) ou troca de evolucao do mascote (${MASCOT_SWITCH_COST}).`}>
               <Target size={16} />
               <strong>{progress.coins}</strong>
@@ -997,6 +1169,19 @@ function App() {
             onPracticeMistake={recordWritingMistake}
             onCompleteWritingPractice={completeWritingPractice}
             onSpeak={speak}
+          />
+        )}
+        {activeTab === 'clan' && (
+          <ClanView
+            isFirebaseUser={isFirebaseUser}
+            clan={clan}
+            members={clanMembers}
+            topClans={topClans}
+            currentUid={user?.uid ?? null}
+            error={clanError}
+            onCreate={handleCreateClan}
+            onJoin={handleJoinClan}
+            onLeave={handleLeaveClan}
           />
         )}
         {activeTab === 'errors' && (
@@ -1159,6 +1344,7 @@ function activeTitle(tab: Tab) {
     learn: 'Trilha do Carpa-Dragao',
     practice: 'Treino diario',
     errors: 'Corrigir erros',
+    clan: 'Cla do Dragao',
     clips: 'Estudar com cultura',
     mascot: 'Seu companheiro Koi',
     profile: 'Seu ritmo',
@@ -1378,19 +1564,6 @@ function LearnView({
 
   return (
     <div className="learn-grid">
-      <section className="mission-band">
-        <div>
-          <p className="eyebrow">Missao diaria</p>
-          <h2>Complete uma licao, revise dois cartoes e grave uma frase.</h2>
-        </div>
-        <div className="mission-metrics">
-          <Stat icon={BookOpen} label="Licoes" value={`${progress.completedLessons.length}/${lessons.length}`} />
-          <Stat icon={Layers3} label="Cartoes" value={`${Object.keys(progress.cards).length}`} />
-          <Stat icon={Mic} label="Fala" value={`${progress.speakingSessions}`} />
-          <Stat icon={Brush} label="Hanzi" value={`${progress.writingSessions}`} />
-        </div>
-      </section>
-
       <section className="lesson-tree-panel" aria-label="Trilha do Carpa-Dragao">
         <div className="tree-canopy">
           <p className="eyebrow">Lenda do Carpa-Dragao</p>
@@ -2370,6 +2543,200 @@ function getPathLength(points: DrawPoint[]) {
 
 function distanceBetween(left: DrawPoint, right: DrawPoint) {
   return Math.hypot(left.x - right.x, left.y - right.y)
+}
+
+function ClanView({
+  isFirebaseUser,
+  clan,
+  members,
+  topClans,
+  currentUid,
+  error,
+  onCreate,
+  onJoin,
+  onLeave,
+}: {
+  isFirebaseUser: boolean
+  clan: ClanDoc | null
+  members: ClanMember[]
+  topClans: ClanDoc[]
+  currentUid: string | null
+  error: string
+  onCreate: (name: string, emoji: string) => void | Promise<void>
+  onJoin: (code: string) => void | Promise<void>
+  onLeave: () => void | Promise<void>
+}) {
+  const [name, setName] = useState('')
+  const [emoji, setEmoji] = useState('🐉')
+  const [code, setCode] = useState('')
+
+  if (!isFirebaseUser) {
+    return (
+      <div className="clan-layout">
+        <section className="clan-empty">
+          <Users size={28} />
+          <h2>Cla precisa de conta real</h2>
+          <p>
+            Modo convidado nao entra em cla. Crie ou entre numa conta Google ou e-mail/senha pelo botao Sair / Entrar
+            no perfil para juntar tres aprendizes e batalhar no ranking.
+          </p>
+        </section>
+      </div>
+    )
+  }
+
+  if (!clan) {
+    return (
+      <div className="clan-layout">
+        <section className="clan-card">
+          <div className="ranking-header">
+            <p className="eyebrow">Forme um cla</p>
+            <h2>Tres carpas saltam mais alto que um.</h2>
+          </div>
+          <p style={{ color: '#cdbfae', margin: 0 }}>
+            Grupo de ate {CLAN_MAX_MEMBERS} pessoas. Cada XP individual entra com bonus de +25% no total do grupo,
+            que disputa o ranking semanal contra outros clas.
+          </p>
+
+          <div className="clan-form">
+            <p className="eyebrow">Criar novo cla</p>
+            <div className="clan-form-row">
+              <input
+                value={emoji}
+                onChange={(event) => setEmoji(event.target.value)}
+                placeholder="🐉"
+                maxLength={4}
+                className="clan-emoji-input"
+              />
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Nome do cla (ate 24 letras)"
+                maxLength={24}
+              />
+            </div>
+            <button className="primary-action" type="button" onClick={() => onCreate(name, emoji)}>
+              <Plus size={18} /> Fundar cla
+            </button>
+          </div>
+
+          <div className="clan-form">
+            <p className="eyebrow">Entrar com codigo</p>
+            <div className="clan-form-row">
+              <input
+                value={code}
+                onChange={(event) => setCode(event.target.value.toUpperCase())}
+                placeholder="ex: D7K2QP"
+                maxLength={8}
+              />
+              <button className="primary-action" type="button" onClick={() => onJoin(code)}>
+                <LogIn size={18} /> Entrar
+              </button>
+            </div>
+          </div>
+
+          {error && <p className="feedback error" style={{ margin: 0 }}>{error}</p>}
+        </section>
+
+        <ClanRankingPanel topClans={topClans} currentUid={currentUid} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="clan-layout">
+      <section className="clan-card">
+        <div className="clan-banner">
+          <span className="clan-banner-emoji" aria-hidden="true">{clan.emoji}</span>
+          <div>
+            <p className="eyebrow">Cla do Dragao</p>
+            <h2>{clan.name}</h2>
+            <small>codigo: {clan.code}</small>
+          </div>
+          <div className="hud-pill hud-coins">
+            <Swords size={16} />
+            <strong>{clan.totalXp}</strong>
+            <span>XP grupo</span>
+          </div>
+        </div>
+
+        <div className="clan-members">
+          <p className="eyebrow">Membros ({members.length}/{CLAN_MAX_MEMBERS})</p>
+          {members.map((member) => (
+            <article key={member.uid} className={`clan-member${member.uid === currentUid ? ' current' : ''}`}>
+              <div>
+                <strong>{member.displayName}</strong>
+                <small>{member.email}</small>
+              </div>
+              <div className="clan-member-xp">
+                <span>{member.xp} XP</span>
+                <small>+{clanXpBonus(member.xp)} bonus</small>
+              </div>
+            </article>
+          ))}
+          {members.length < CLAN_MAX_MEMBERS && (
+            <p className="feedback" style={{ margin: 0, color: '#a99c8f' }}>
+              Compartilhe o codigo <strong>{clan.code}</strong> com mais {CLAN_MAX_MEMBERS - members.length} aprendiz
+              {CLAN_MAX_MEMBERS - members.length === 1 ? '' : 'es'}.
+            </p>
+          )}
+        </div>
+
+        <div className="clan-mascot">
+          <Fish size={28} />
+          <div>
+            <p className="eyebrow">RedTail coletivo</p>
+            <strong>{clan.mascotName || 'Dragao do cla'}</strong>
+            <small>Cresce junto com o XP total. Quanto mais cedo o trio acerta, mais alto o cla salta.</small>
+          </div>
+        </div>
+
+        <button className="account-button danger" type="button" onClick={() => onLeave()}>
+          <LogOut size={18} /> Sair do cla
+        </button>
+        {error && <p className="feedback error" style={{ margin: 0 }}>{error}</p>}
+      </section>
+
+      <ClanRankingPanel topClans={topClans} currentUid={currentUid} />
+    </div>
+  )
+}
+
+function ClanRankingPanel({
+  topClans,
+  currentUid,
+}: {
+  topClans: ClanDoc[]
+  currentUid: string | null
+}) {
+  return (
+    <section className="clan-ranking">
+      <div className="ranking-header">
+        <p className="eyebrow">Ranking de clas</p>
+        <h2>Top {topClans.length || 5} grupos da semana</h2>
+      </div>
+      {topClans.length === 0 ? (
+        <p style={{ color: '#a99c8f', margin: 0 }}>
+          Nenhum cla na briga ainda. Forme o seu e seja o primeiro do ranking.
+        </p>
+      ) : (
+        <div className="ranking-list">
+          {topClans.map((entry, index) => {
+            const isMine = currentUid && entry.memberUids.includes(currentUid)
+            return (
+              <div className={`ranking-item${isMine ? ' current' : ''}`} key={entry.id}>
+                <span className="ranking-pos">{index + 1}</span>
+                <span className="ranking-name">
+                  {entry.emoji} {entry.name}
+                </span>
+                <span className="ranking-xp">{entry.totalXp} XP</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
 }
 
 function ClipsView({

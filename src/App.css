@@ -2697,3 +2697,184 @@ select:focus-visible {
   align-items: flex-start;
   gap: 12px;
 }
+
+/* === v0.2.1: missions popover & clan tab === */
+
+.hud-missions {
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f6f0e8;
+}
+.hud-missions.open {
+  border-color: #f4d27a;
+  background: rgba(244, 210, 122, 0.18);
+}
+.missions-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 16px;
+  background: rgba(20, 16, 12, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 14px 16px;
+  width: 260px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
+  z-index: 30;
+}
+.missions-popover .eyebrow {
+  margin: 0 0 10px;
+}
+.missions-popover ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.missions-popover li {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 13px;
+  color: #cdbfae;
+}
+.missions-popover li.done {
+  color: #8fe2c1;
+  background: rgba(33, 132, 107, 0.18);
+}
+.missions-popover li strong {
+  color: inherit;
+  font-weight: 800;
+}
+.topbar {
+  position: relative;
+}
+
+.clan-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 18px;
+}
+@media (max-width: 880px) {
+  .clan-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.clan-card,
+.clan-ranking,
+.clan-empty {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+.clan-empty {
+  text-align: center;
+  justify-items: center;
+  color: #cdbfae;
+}
+.clan-empty h2 {
+  margin: 0;
+}
+.clan-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: linear-gradient(135deg, rgba(185, 39, 50, 0.22), rgba(33, 132, 107, 0.18));
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.clan-banner-emoji {
+  font-size: 38px;
+  line-height: 1;
+}
+.clan-banner h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.clan-banner small {
+  color: #cdbfae;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+}
+.clan-banner .hud-pill {
+  margin-left: auto;
+}
+.clan-form {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+}
+.clan-form .eyebrow {
+  margin: 0;
+}
+.clan-form-row {
+  display: flex;
+  gap: 8px;
+}
+.clan-form input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 16, 12, 0.6);
+  color: #f6f0e8;
+  font-size: 15px;
+}
+.clan-emoji-input {
+  flex: 0 0 60px !important;
+  text-align: center;
+  font-size: 22px !important;
+}
+.clan-members {
+  display: grid;
+  gap: 8px;
+}
+.clan-member {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.clan-member.current {
+  border-color: #f4d27a;
+  background: rgba(244, 210, 122, 0.1);
+}
+.clan-member small {
+  color: #a99c8f;
+  font-size: 12px;
+}
+.clan-member-xp {
+  text-align: right;
+}
+.clan-member-xp small {
+  display: block;
+  color: #8fe2c1;
+}
+.clan-mascot {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(33, 132, 107, 0.12);
+  border: 1px solid rgba(33, 132, 107, 0.3);
+}
+.clan-mascot strong {
+  display: block;
+}
+.clan-mascot small {
+  color: #cdbfae;
+  font-size: 12px;
+}
