@@ -1,5 +1,7 @@
 import {
+  AlertTriangle,
   BookOpen,
+  Boxes,
   Brush,
   CalendarCheck,
   CheckCircle2,
@@ -12,6 +14,7 @@ import {
   Layers3,
   Library,
   LockKeyhole,
+  LogOut,
   Mic,
   Play,
   Plus,
@@ -20,12 +23,13 @@ import {
   Sparkles,
   Star,
   Target,
+  Trash2,
   Trophy,
   Undo2,
   Volume2,
 } from 'lucide-react'
 import { Capacitor, registerPlugin } from '@capacitor/core'
-import { auth } from './firebase'
+import { auth, deleteCurrentAccount } from './firebase'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User, GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth'
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -33,12 +37,14 @@ import type { CSSProperties, FormEvent, PointerEvent as ReactPointerEvent } from
 import './App.css'
 import {
   allPhrases,
+  chunks,
   clipSeeds,
   lessons,
   studyMoments,
   toneDrills,
   units,
   writingCharacters,
+  type Chunk,
   type Lesson,
   type Phrase,
   type StudyMoment,
@@ -62,8 +68,8 @@ import {
 import { checkInactivity, getStageAccessories, onLessonComplete, onCardReview } from './mascot'
 import { MascotWidget } from './MascotWidget'
 
-type Tab = 'learn' | 'practice' | 'clips' | 'mascot' | 'profile'
-type PracticeMode = 'cards' | 'speak' | 'write'
+type Tab = 'learn' | 'practice' | 'errors' | 'clips' | 'mascot' | 'profile'
+type PracticeMode = 'cards' | 'chunks' | 'speak' | 'write'
 type Difficulty = 'hard' | 'good' | 'easy'
 type MicState = 'idle' | 'starting' | 'listening' | 'processing' | 'success' | 'fail' | 'error'
 type MandarinTtsPlugin = {
@@ -81,6 +87,7 @@ const MandarinSpeech = registerPlugin<MandarinSpeechPlugin>('MandarinSpeech')
 const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen }> = [
   { id: 'learn', label: 'Trilha', icon: BookOpen },
   { id: 'practice', label: 'Treino', icon: Layers3 },
+  { id: 'errors', label: 'Erros', icon: AlertTriangle },
   { id: 'clips', label: 'Estudar', icon: Headphones },
   { id: 'mascot', label: 'Koi', icon: Fish },
   { id: 'profile', label: 'Perfil', icon: Trophy },
@@ -124,6 +131,7 @@ const writingValidationTemplates: Record<string, WritingValidationTemplate> = {
 
 const practiceModes: Array<{ id: PracticeMode; label: string; icon: typeof Layers3 }> = [
   { id: 'cards', label: 'Cartoes', icon: Layers3 },
+  { id: 'chunks', label: 'Chunks', icon: Boxes },
   { id: 'speak', label: 'Fala', icon: Mic },
   { id: 'write', label: 'Escrita', icon: Brush },
 ]
@@ -167,6 +175,7 @@ function App() {
   const [selectedLessonId, setSelectedLessonId] = useState(lessons[0].id)
   const [lessonStep, setLessonStep] = useState(0)
   const [quizChoice, setQuizChoice] = useState('')
+  const [quizLocked, setQuizLocked] = useState(false)
   const [isAutoAdvancing, setIsAutoAdvancing] = useState(false)
   const [isCardFlipped, setIsCardFlipped] = useState(false)
   const [clipTitle, setClipTitle] = useState('')
@@ -340,6 +349,7 @@ function App() {
       }
     })
     setQuizChoice('')
+    setQuizLocked(false)
   }
 
   function startLesson(lessonId: string) {
@@ -347,6 +357,7 @@ function App() {
     setIsAutoAdvancing(false)
     setLessonStep(0)
     setQuizChoice('')
+    setQuizLocked(false)
     setSelectedLessonId(lessonId)
     setIsLessonActive(true)
   }
@@ -358,6 +369,7 @@ function App() {
     if (lessonStep < selectedLesson.phrases.length - 1) {
       setLessonStep((current) => current + 1)
       setQuizChoice('')
+      setQuizLocked(false)
       return
     }
 
@@ -368,6 +380,7 @@ function App() {
       setSelectedLessonId(nextLessonId)
       setLessonStep(0)
       setQuizChoice('')
+      setQuizLocked(false)
       return
     }
 
@@ -376,31 +389,28 @@ function App() {
   }
 
   function chooseQuizAnswer(choice: string) {
+    if (quizLocked) return
+    setQuizLocked(true)
     setQuizChoice(choice)
-    if (choice !== quizPhrase.portuguese) {
+    const isRight = choice === quizPhrase.portuguese
+
+    if (!isRight) {
       setProgress((current) =>
-        recordMistake(
-          current,
-          {
-            type: 'lesson',
-            itemId: quizPhrase.id,
-            prompt: `${quizPhrase.hanzi} - ${quizPhrase.pinyin}`,
-            expected: quizPhrase.portuguese,
-            answer: choice,
-            helper: quizPhrase.note,
-          },
-        ),
+        recordMistake(current, {
+          type: 'lesson',
+          itemId: quizPhrase.id,
+          prompt: `${quizPhrase.hanzi} - ${quizPhrase.pinyin}`,
+          expected: quizPhrase.portuguese,
+          answer: choice,
+          helper: quizPhrase.note,
+        }),
       )
-      setIsAutoAdvancing(false)
-      if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
-      return
     }
 
-    setProgress((current) => resolveMistake(current, 'lesson', quizPhrase.id))
     speak(quizPhrase.hanzi)
     setIsAutoAdvancing(true)
     if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
-    autoAdvanceTimer.current = window.setTimeout(advanceLessonFlow, 1100)
+    autoAdvanceTimer.current = window.setTimeout(advanceLessonFlow, 1500)
   }
 
   function reviewCard(difficulty: Difficulty) {
@@ -623,6 +633,32 @@ function App() {
     setMicState('idle')
     setLastSpeechExpected('')
     setLastSpeechMatched(false)
+  }
+
+  function handleChunkResult(chunk: Chunk, correct: boolean, answer: string) {
+    setProgress((current) => {
+      if (!correct) {
+        return recordMistake(current, {
+          type: 'chunk',
+          itemId: chunk.id,
+          prompt: `${chunk.hanzi} - ${chunk.pinyin}`,
+          expected: chunk.blankAnswer,
+          answer: answer || 'Resposta vazia',
+          helper: chunk.note,
+        })
+      }
+      const baseProgress = resolveMistake(current, 'chunk', chunk.id)
+      const dailyGoals = normalizeDailyGoals(baseProgress.dailyGoals, today)
+      return {
+        ...baseProgress,
+        xp: baseProgress.xp + 6,
+        coins: baseProgress.coins + 4,
+        streak: updateStudyStreak(baseProgress, today),
+        lastStudyDate: today,
+        dailyGoals: { ...dailyGoals, cards: dailyGoals.cards + 1 },
+        mascot: hasOpenMistakes(baseProgress) ? baseProgress.mascot : onCardReview(baseProgress.mascot, today),
+      }
+    })
   }
 
   function resolveReviewMistake(mistake: LearningMistake) {
@@ -849,6 +885,7 @@ function App() {
         <nav>
           {navItems.map((item) => {
             const Icon = item.icon
+            const badge = item.id === 'errors' && unresolvedMistakes.length > 0 ? unresolvedMistakes.length : 0
             return (
               <button
                 className={activeTab === item.id ? 'nav-button active' : 'nav-button'}
@@ -859,6 +896,7 @@ function App() {
               >
                 <Icon size={20} />
                 <span>{item.label}</span>
+                {badge > 0 && <em className="nav-badge">{badge}</em>}
               </button>
             )
           })}
@@ -925,6 +963,7 @@ function App() {
             stepIndex={lessonStep}
             stepTotal={selectedLesson.phrases.length}
             quizChoice={quizChoice}
+            quizLocked={quizLocked}
             isAutoAdvancing={isAutoAdvancing}
             options={options}
             progress={progress}
@@ -951,14 +990,25 @@ function App() {
             lastSpeechMatched={lastSpeechMatched}
             onFlip={() => setIsCardFlipped((current) => !current)}
             onReview={reviewCard}
-            onResolveMistake={resolveReviewMistake}
-            onMissMistake={missReviewMistake}
+            onChunkResult={handleChunkResult}
             onRecord={recordSpeech}
             onCompleteSpeakingSession={completeSpeakingSession}
             onResetSpeech={resetSpeechState}
             onPracticeMistake={recordWritingMistake}
             onCompleteWritingPractice={completeWritingPractice}
             onSpeak={speak}
+          />
+        )}
+        {activeTab === 'errors' && (
+          <ErrorsView
+            mistakes={unresolvedMistakes}
+            onResolve={resolveReviewMistake}
+            onMiss={missReviewMistake}
+            onSpeak={speak}
+            onGoToWriting={() => {
+              setPracticeMode('write')
+              setActiveTab('practice')
+            }}
           />
         )}
         {activeTab === 'clips' && (
@@ -1013,6 +1063,54 @@ function App() {
             totalMinutes={totalMinutes}
             openMistakeCount={unresolvedMistakes.length}
             userLevel={userLevel}
+            userEmail={effectiveUser?.email ?? null}
+            isGuest={Boolean(guestEmail)}
+            onSignOut={async () => {
+              if (guestEmail) leaveGuest()
+              try { await signOut(auth) } catch { /* ignore */ }
+            }}
+            onWipeLocal={() => {
+              const ok = window.confirm('Apagar todo o progresso local? Isso nao desloga sua conta.')
+              if (!ok) return
+              try { localStorage.removeItem('redtail-academy-progress-v1') } catch { /* ignore */ }
+              window.location.reload()
+            }}
+            onDeleteAccount={async () => {
+              if (guestEmail) {
+                const ok = window.confirm('Sair do modo convidado e apagar progresso?')
+                if (!ok) return
+                try { localStorage.removeItem('redtail-academy-progress-v1') } catch { /* ignore */ }
+                leaveGuest()
+                return
+              }
+              const first = window.confirm('Excluir a conta e todo o progresso? Acao irreversivel.')
+              if (!first) return
+              const second = window.confirm('Tem certeza absoluta? Confirme novamente para apagar.')
+              if (!second) return
+              try {
+                await deleteCurrentAccount()
+              } catch (err: any) {
+                if (err?.code === 'auth/requires-recent-login') {
+                  try {
+                    await deleteCurrentAccount({ kind: 'google' })
+                  } catch (reauthErr: any) {
+                    const password = window.prompt('Sessao antiga. Digite sua senha para confirmar a exclusao:') || ''
+                    if (!password) return
+                    try {
+                      await deleteCurrentAccount({ kind: 'password', password })
+                    } catch (finalErr: any) {
+                      window.alert('Nao deu para excluir: ' + (finalErr?.message || reauthErr?.message || err.message))
+                      return
+                    }
+                  }
+                } else {
+                  window.alert('Nao deu para excluir: ' + (err?.message || 'erro desconhecido'))
+                  return
+                }
+              }
+              try { localStorage.removeItem('redtail-academy-progress-v1') } catch { /* ignore */ }
+              window.location.reload()
+            }}
             onBuyFreeze={() =>
               setProgress((current) => {
                 if (current.coins < FREEZE_COST) return current
@@ -1036,6 +1134,7 @@ function App() {
       <nav className="bottom-nav" aria-label="Navegacao inferior">
         {navItems.map((item) => {
           const Icon = item.icon
+          const badge = item.id === 'errors' && unresolvedMistakes.length > 0 ? unresolvedMistakes.length : 0
           return (
             <button
               className={activeTab === item.id ? 'bottom-button active' : 'bottom-button'}
@@ -1046,6 +1145,7 @@ function App() {
             >
               <Icon size={20} />
               <span>{item.label}</span>
+              {badge > 0 && <em className="nav-badge">{badge}</em>}
             </button>
           )
         })}
@@ -1056,8 +1156,9 @@ function App() {
 
 function activeTitle(tab: Tab) {
   const labels: Record<Tab, string> = {
-    learn: 'Arvore de mandarim',
+    learn: 'Trilha do Carpa-Dragao',
     practice: 'Treino diario',
+    errors: 'Corrigir erros',
     clips: 'Estudar com cultura',
     mascot: 'Seu companheiro Koi',
     profile: 'Seu ritmo',
@@ -1106,6 +1207,7 @@ function mistakeLabel(type: LearningMistake['type']) {
     card: 'Cartao',
     writing: 'Escrita',
     speech: 'Fala',
+    chunk: 'Chunk',
   }
   return labels[type]
 }
@@ -1148,6 +1250,7 @@ function LearnView({
   stepIndex,
   stepTotal,
   quizChoice,
+  quizLocked,
   isAutoAdvancing,
   options,
   progress,
@@ -1164,6 +1267,7 @@ function LearnView({
   stepIndex: number
   stepTotal: number
   quizChoice: string
+  quizLocked: boolean
   isAutoAdvancing: boolean
   options: string[]
   progress: LearningProgress
@@ -1222,24 +1326,38 @@ function LearnView({
           <div className="quiz-block">
             <p className="eyebrow">Escolha a traducao</p>
             <div className="answer-grid">
-              {options.map((option) => (
-                <button
-                  className={[
-                    'answer-option',
-                    quizChoice === option ? 'selected' : '',
-                    quizChoice === option && option === phrase.portuguese ? 'correct' : '',
-                    quizChoice === option && option !== phrase.portuguese ? 'wrong' : '',
-                  ].join(' ')}
-                  key={option}
-                  type="button"
-                  onClick={() => onChoose(option)}
-                >
-                  {option}
-                </button>
-              ))}
+              {options.map((option) => {
+                const isChosen = quizChoice === option
+                const isAnswer = option === phrase.portuguese
+                const reveal = quizLocked && isAnswer
+                return (
+                  <button
+                    className={[
+                      'answer-option',
+                      isChosen ? 'selected' : '',
+                      isChosen && isAnswer ? 'correct' : '',
+                      isChosen && !isAnswer ? 'wrong' : '',
+                      reveal && !isChosen ? 'reveal' : '',
+                      quizLocked ? 'locked' : '',
+                    ].filter(Boolean).join(' ')}
+                    key={option}
+                    type="button"
+                    disabled={quizLocked}
+                    onClick={() => onChoose(option)}
+                  >
+                    {option}
+                  </button>
+                )
+              })}
             </div>
-            <p className={isCorrect ? 'feedback good' : 'feedback'}>
-              {isCorrect && isAutoAdvancing ? 'Correto. Avancando automaticamente...' : quizChoice ? phrase.note : ' '}
+            <p className={isCorrect ? 'feedback good' : quizLocked ? 'feedback error' : 'feedback'}>
+              {isCorrect && isAutoAdvancing
+                ? 'Correto. Avancando...'
+                : quizLocked && !isCorrect
+                ? `Errado. Voce treina esse na aba Erros. Resposta: ${phrase.portuguese}.`
+                : quizChoice
+                ? phrase.note
+                : ' '}
             </p>
           </div>
 
@@ -1248,7 +1366,7 @@ function LearnView({
               <span>Padrao de tons</span>
               <strong>{phrase.tonePattern}</strong>
             </div>
-            <button className="primary-action" type="button" disabled={!isCorrect} onClick={onAdvanceNow}>
+            <button className="primary-action" type="button" disabled={!quizLocked} onClick={onAdvanceNow}>
               {stepIndex + 1 === stepTotal ? 'Concluir' : 'Proxima'}
               <ChevronRight size={18} />
             </button>
@@ -1273,10 +1391,10 @@ function LearnView({
         </div>
       </section>
 
-      <section className="lesson-tree-panel" aria-label="Arvore de crescimento HSK">
+      <section className="lesson-tree-panel" aria-label="Trilha do Carpa-Dragao">
         <div className="tree-canopy">
-          <p className="eyebrow">Arvore HSK</p>
-          <h2>Suba de raiz em raiz ate o proximo nivel.</h2>
+          <p className="eyebrow">Lenda do Carpa-Dragao</p>
+          <h2>Suba o rio fase a fase ate saltar o Portao do Dragao.</h2>
         </div>
         <div className="tree-trunk">
           {units.map((unit, unitIndex) => (
@@ -1320,8 +1438,8 @@ function LearnView({
           ))}
           <div className="hsk-gate next">
             <span>Proximo portal</span>
-            <strong>HSK 2</strong>
-            <small>libera com HSK 1 completo</small>
+            <strong>Tornar-se Dragao</strong>
+            <small>HSK 1 libera ao completar todas as fases</small>
           </div>
         </div>
       </section>
@@ -1343,8 +1461,7 @@ function PracticeView({
   lastSpeechMatched,
   onFlip,
   onReview,
-  onResolveMistake,
-  onMissMistake,
+  onChunkResult,
   onRecord,
   onCompleteSpeakingSession,
   onResetSpeech,
@@ -1365,8 +1482,7 @@ function PracticeView({
   lastSpeechMatched: boolean
   onFlip: () => void
   onReview: (difficulty: Difficulty) => void
-  onResolveMistake: (mistake: LearningMistake) => void
-  onMissMistake: (mistake: LearningMistake, answer: string) => void
+  onChunkResult: (chunk: Chunk, correct: boolean, answer: string) => void
   onRecord: (expected: string) => void
   onCompleteSpeakingSession: () => void
   onResetSpeech: () => void
@@ -1399,11 +1515,16 @@ function PracticeView({
           dueCount={dueCount}
           flipped={flipped}
           progress={progress}
-          openMistakes={openMistakes}
           onFlip={onFlip}
           onReview={onReview}
-          onResolveMistake={onResolveMistake}
-          onMissMistake={onMissMistake}
+          onSpeak={onSpeak}
+        />
+      )}
+
+      {mode === 'chunks' && (
+        <ChunksView
+          progress={progress}
+          onChunkResult={onChunkResult}
           onSpeak={onSpeak}
         />
       )}
@@ -1439,22 +1560,16 @@ function CardsView({
   dueCount,
   flipped,
   progress,
-  openMistakes,
   onFlip,
   onReview,
-  onResolveMistake,
-  onMissMistake,
   onSpeak,
 }: {
   activeCard: (typeof allPhrases)[number]
   dueCount: number
   flipped: boolean
   progress: LearningProgress
-  openMistakes: LearningMistake[]
   onFlip: () => void
   onReview: (difficulty: Difficulty) => void
-  onResolveMistake: (mistake: LearningMistake) => void
-  onMissMistake: (mistake: LearningMistake, answer: string) => void
   onSpeak: (text: string) => void
 }) {
   const reviewed = Object.values(progress.cards).reduce((total, card) => total + card.reviewed, 0)
@@ -1497,7 +1612,7 @@ function CardsView({
       <section className="deck-panel">
         <div className="deck-header">
           <p className="eyebrow">Deck vivo</p>
-          <h2>{allPhrases.length} itens HSK 1</h2>
+          <h2>{allPhrases.length} blocos da trilha</h2>
           <span>{reviewed} revisoes feitas</span>
         </div>
         <div className="deck-list">
@@ -1516,107 +1631,256 @@ function CardsView({
         </div>
       </section>
 
-      <MistakeReviewPanel
-        mistakes={openMistakes}
-        onResolve={onResolveMistake}
-        onMiss={onMissMistake}
-        onSpeak={onSpeak}
-      />
     </div>
   )
 }
 
-function MistakeReviewPanel({
+function ErrorsView({
   mistakes,
   onResolve,
   onMiss,
   onSpeak,
+  onGoToWriting,
 }: {
   mistakes: LearningMistake[]
   onResolve: (mistake: LearningMistake) => void
   onMiss: (mistake: LearningMistake, answer: string) => void
   onSpeak: (text: string) => void
+  onGoToWriting: () => void
 }) {
-  const [answer, setAnswer] = useState('')
-  const [feedback, setFeedback] = useState('')
-  const activeMistake = mistakes[0]
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [feedback, setFeedback] = useState<Record<string, string>>({})
 
-  if (!activeMistake) {
+  if (mistakes.length === 0) {
     return (
-      <section className="mistake-panel cleared">
-        <div className="mistake-panel-header">
-          <div>
-            <p className="eyebrow">Erros</p>
-            <h2>Fila limpa</h2>
+      <div className="errors-layout">
+        <section className="mistake-panel cleared">
+          <div className="mistake-panel-header">
+            <div>
+              <p className="eyebrow">Erros</p>
+              <h2>Fila limpa</h2>
+            </div>
+            <CheckCircle2 size={26} />
           </div>
-          <CheckCircle2 size={26} />
-        </div>
-        <p>Nenhum erro bloqueando a evolucao do mascote.</p>
-      </section>
+          <p>Sem erros pendentes. O carpa esta livre para subir o rio.</p>
+        </section>
+      </div>
     )
   }
 
-  const isWritingMistake = activeMistake.type === 'writing'
-
-  function submitMistakeReview(event: FormEvent<HTMLFormElement>) {
+  function submit(mistake: LearningMistake, event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!activeMistake) return
-
-    if (isWritingMistake) {
-      setFeedback('Esse erro sai da fila quando voce validar o hanzi na aba Escrita.')
+    if (mistake.type === 'writing') {
+      setFeedback((current) => ({ ...current, [mistake.id]: 'Esse erro sai pela aba Escrita.' }))
       return
     }
-
-    if (normalizeAnswer(answer) === normalizeAnswer(activeMistake.expected)) {
-      setAnswer('')
-      setFeedback('')
-      onResolve(activeMistake)
+    const answer = drafts[mistake.id] ?? ''
+    if (normalizeAnswer(answer) === normalizeAnswer(mistake.expected)) {
+      setDrafts((current) => ({ ...current, [mistake.id]: '' }))
+      setFeedback((current) => ({ ...current, [mistake.id]: '' }))
+      onResolve(mistake)
       return
     }
-
-    onMiss(activeMistake, answer || 'Resposta vazia')
-    setFeedback('Ainda nao. Veja a dica e tente outra vez.')
+    onMiss(mistake, answer || 'Resposta vazia')
+    setFeedback((current) => ({ ...current, [mistake.id]: 'Ainda nao. Veja a dica e tente outra vez.' }))
   }
 
   return (
-    <section className="mistake-panel">
-      <div className="mistake-panel-header">
-        <div>
-          <p className="eyebrow">Treinar erros</p>
-          <h2>{mistakes.length} erro{mistakes.length === 1 ? '' : 's'} bloqueando evolucao</h2>
+    <div className="errors-layout">
+      <section className="mistake-panel">
+        <div className="mistake-panel-header">
+          <div>
+            <p className="eyebrow">Erros para corrigir</p>
+            <h2>{mistakes.length} pendente{mistakes.length === 1 ? '' : 's'} bloqueando evolucao</h2>
+          </div>
+          <LockKeyhole size={26} />
         </div>
-        <LockKeyhole size={26} />
-      </div>
+        <p style={{ margin: 0, color: '#a99c8f' }}>
+          Voce so corrige aqui depois da licao. Cada acerto remove um bloqueio do mascote.
+        </p>
+      </section>
 
-      <article className="mistake-card">
-        <span>{mistakeLabel(activeMistake.type)}</span>
-        <strong>{activeMistake.prompt}</strong>
-        <small>{activeMistake.helper}</small>
-        <div className="mistake-actions">
-          <button className="icon-action" type="button" onClick={() => onSpeak(activeMistake.prompt)} title="Ouvir">
-            <Volume2 size={18} />
-          </button>
-          <span>{activeMistake.attempts} tentativa{activeMistake.attempts === 1 ? '' : 's'}</span>
+      <section className="errors-list">
+        {mistakes.map((mistake) => {
+          const isWriting = mistake.type === 'writing'
+          return (
+            <article className="mistake-card-row" key={mistake.id}>
+              <div className="mistake-card-head">
+                <span>{mistakeLabel(mistake.type)}</span>
+                <strong>{mistake.prompt}</strong>
+                <small>{mistake.helper}</small>
+                <div className="mistake-actions">
+                  <button className="icon-action" type="button" onClick={() => onSpeak(mistake.prompt)} title="Ouvir">
+                    <Volume2 size={18} />
+                  </button>
+                  <span>
+                    {mistake.attempts} tentativa{mistake.attempts === 1 ? '' : 's'}
+                  </span>
+                </div>
+              </div>
+              <form className="mistake-form" onSubmit={(event) => submit(mistake, event)}>
+                <label>
+                  {isWriting ? 'Volte para Escrita e valide o caractere' : 'Resposta correta'}
+                  <input
+                    value={drafts[mistake.id] ?? ''}
+                    disabled={isWriting}
+                    onChange={(event) =>
+                      setDrafts((current) => ({ ...current, [mistake.id]: event.target.value }))
+                    }
+                    placeholder={isWriting ? mistake.expected : 'digite a resposta'}
+                  />
+                </label>
+                {isWriting ? (
+                  <button className="primary-action" type="button" onClick={onGoToWriting}>
+                    <Brush size={18} />
+                    Ir para Escrita
+                  </button>
+                ) : (
+                  <button className="primary-action" type="submit">
+                    <CheckCircle2 size={18} />
+                    Conferir
+                  </button>
+                )}
+              </form>
+              <p className={feedback[mistake.id] ? 'feedback error' : 'feedback'}>
+                {feedback[mistake.id] || ' '}
+              </p>
+            </article>
+          )
+        })}
+      </section>
+    </div>
+  )
+}
+
+function ChunksView({
+  progress,
+  onChunkResult,
+  onSpeak,
+}: {
+  progress: LearningProgress
+  onChunkResult: (chunk: Chunk, correct: boolean, answer: string) => void
+  onSpeak: (text: string) => void
+}) {
+  const [index, setIndex] = useState(0)
+  const [stage, setStage] = useState<'study' | 'gap' | 'feedback'>('study')
+  const [answer, setAnswer] = useState('')
+  const [lastCorrect, setLastCorrect] = useState(false)
+
+  const chunk = chunks[index % chunks.length]
+  const openChunkMistakes = progress.mistakes.filter((mistake) => !mistake.resolvedAt && mistake.type === 'chunk').length
+
+  function next() {
+    setStage('study')
+    setAnswer('')
+    setIndex((current) => (current + 1) % chunks.length)
+  }
+
+  function check(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const correct = normalizeAnswer(answer) === normalizeAnswer(chunk.blankAnswer)
+    setLastCorrect(correct)
+    onChunkResult(chunk, correct, answer)
+    setStage('feedback')
+  }
+
+  return (
+    <div className="chunks-layout">
+      <section className="chunk-stage">
+        <div className="review-header">
+          <div>
+            <p className="eyebrow">Chunks (Influx)</p>
+            <h2>Aprenda blocos prontos, nao palavras soltas.</h2>
+          </div>
+          <div className="hud-pill">
+            <Boxes size={16} />
+            <strong>{index + 1}</strong>
+            <span>/ {chunks.length}</span>
+          </div>
         </div>
-      </article>
 
-      <form className="mistake-form" onSubmit={submitMistakeReview}>
-        <label>
-          {isWritingMistake ? 'Volte para Escrita e valide o caractere' : 'Digite a resposta certa'}
-          <input
-            value={answer}
-            disabled={isWritingMistake}
-            onChange={(event) => setAnswer(event.target.value)}
-            placeholder={isWritingMistake ? activeMistake.expected : 'traducao em portugues'}
-          />
-        </label>
-        <button className="primary-action" type="submit">
-          <CheckCircle2 size={18} />
-          Conferir
-        </button>
-      </form>
-      <p className={feedback ? 'feedback error' : 'feedback'}>{feedback || ' '}</p>
-    </section>
+        {stage === 'study' && (
+          <div className="chunk-card">
+            <button className="sound-button" type="button" onClick={() => onSpeak(chunk.hanzi)} title="Ouvir bloco">
+              <Volume2 size={24} />
+            </button>
+            <strong>{chunk.hanzi}</strong>
+            <span>{chunk.pinyin}</span>
+            <p>{chunk.portuguese}</p>
+            <small>{chunk.gloss}</small>
+            <em>{chunk.note}</em>
+            <button className="primary-action" type="button" onClick={() => setStage('gap')}>
+              Treinar bloco <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
+
+        {stage === 'gap' && (
+          <form className="chunk-card" onSubmit={check}>
+            <p className="eyebrow">Complete o bloco</p>
+            <strong>{chunk.blank}</strong>
+            <span>{chunk.pinyin}</span>
+            <p>{chunk.portuguese}</p>
+            <label>
+              Resposta
+              <input
+                autoFocus
+                value={answer}
+                onChange={(event) => setAnswer(event.target.value)}
+                placeholder="digite o que falta"
+              />
+            </label>
+            <button className="primary-action" type="submit">
+              <CheckCircle2 size={18} /> Conferir
+            </button>
+          </form>
+        )}
+
+        {stage === 'feedback' && (
+          <div className="chunk-card">
+            <p className={lastCorrect ? 'feedback good' : 'feedback error'}>
+              {lastCorrect
+                ? 'Bloco internalizado. +6 XP / +4 moedas.'
+                : `Errado. Resposta: ${chunk.blankAnswer}. Esse chunk vai pra aba Erros.`}
+            </p>
+            <strong>{chunk.hanzi}</strong>
+            <span>{chunk.pinyin}</span>
+            <small>{chunk.gloss}</small>
+            <button className="primary-action" type="button" onClick={next}>
+              Proximo bloco <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
+      </section>
+
+      <aside className="chunk-side">
+        <div className="deck-header">
+          <p className="eyebrow">Erros de chunks</p>
+          <h2>{openChunkMistakes} bloco{openChunkMistakes === 1 ? '' : 's'} para revisar</h2>
+          <span>Esses voltam quando voce abrir a aba Erros.</span>
+        </div>
+        <div className="deck-list">
+          {chunks.map((item, itemIndex) => (
+            <button
+              className={itemIndex === index ? 'deck-item active' : 'deck-item'}
+              key={item.id}
+              type="button"
+              onClick={() => {
+                setIndex(itemIndex)
+                setStage('study')
+                setAnswer('')
+              }}
+            >
+              <div>
+                <strong>{item.hanzi}</strong>
+                <span>{item.pinyin}</span>
+              </div>
+              <small>{item.portuguese}</small>
+            </button>
+          ))}
+        </div>
+      </aside>
+    </div>
   )
 }
 
@@ -2266,15 +2530,25 @@ function ProfileView({
   totalMinutes,
   openMistakeCount,
   userLevel,
+  userEmail,
+  isGuest,
   onBuyFreeze,
   onGoalChange,
+  onSignOut,
+  onWipeLocal,
+  onDeleteAccount,
 }: {
   progress: LearningProgress
   totalMinutes: number
   openMistakeCount: number
   userLevel: number
+  userEmail: string | null
+  isGuest: boolean
   onBuyFreeze: () => void
   onGoalChange: (goalId: LearningProgress['personalGoal']['id']) => void
+  onSignOut: () => void | Promise<void>
+  onWipeLocal: () => void
+  onDeleteAccount: () => void | Promise<void>
 }) {
   const stats = [
     { label: 'Nivel', value: userLevel, icon: Trophy },
@@ -2297,12 +2571,25 @@ function ProfileView({
 
   const goalProgress = Math.min(100, Math.round((totalMinutes / progress.personalGoal.targetMinutes) * 100))
 
+  const dragonTitle =
+    progress.xp >= 600
+      ? 'Saltador do Portao'
+      : progress.xp >= 300
+      ? 'Carpa veterano'
+      : progress.xp >= 120
+      ? 'Carpa subindo o rio'
+      : 'Carpa na lagoa'
+
   return (
     <div className="profile-layout">
       <section className="profile-hero">
-        <p className="eyebrow">RedTail Score</p>
-        <h2>{progress.xp < 150 ? 'Explorador HSK 1' : 'Aprendiz consistente'}</h2>
-        <span>Nivel {userLevel} - {progress.personalGoal.label}</span>
+        <div className="profile-identity">
+          <div>
+            <p className="eyebrow">{isGuest ? 'Convidado' : userEmail || 'Conta'}</p>
+            <h2>{dragonTitle}</h2>
+            <span>Nivel {userLevel} - {progress.personalGoal.label}</span>
+          </div>
+        </div>
         <div className="profile-meter">
           <span style={{ width: `${Math.min(100, progress.xp / 3)}%` }}></span>
         </div>
@@ -2394,6 +2681,34 @@ function ProfileView({
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="account-panel">
+        <div className="ranking-header">
+          <p className="eyebrow">Conta</p>
+          <h2>{isGuest ? 'Modo convidado' : userEmail || 'Sem login'}</h2>
+        </div>
+        <div className="account-actions">
+          <button className="account-button" type="button" onClick={() => onSignOut()}>
+            <LogOut size={18} />
+            <span>{isGuest ? 'Sair do modo convidado' : 'Sair da conta'}</span>
+          </button>
+          <button className="account-button" type="button" onClick={onWipeLocal}>
+            <RotateCcw size={18} />
+            <span>Apagar progresso deste aparelho</span>
+          </button>
+          <button
+            className="account-button danger"
+            type="button"
+            onClick={() => onDeleteAccount()}
+          >
+            <Trash2 size={18} />
+            <span>{isGuest ? 'Apagar convidado e progresso' : 'Excluir conta e progresso'}</span>
+          </button>
+        </div>
+        <small style={{ color: '#a99c8f' }}>
+          Excluir a conta apaga seu acesso no Firebase e tambem o progresso salvo neste aparelho. Operacao irreversivel.
+        </small>
       </section>
 
       <section className="roadmap-band">

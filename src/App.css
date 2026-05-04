@@ -2507,3 +2507,193 @@ select:focus-visible {
   border-color: #21846b;
 }
 .mic-result-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* === v0.2.0: locked answers, errors tab, chunks, account panel === */
+
+.answer-option.locked {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+.answer-option.locked:not(.selected):not(.reveal) {
+  opacity: 0.45;
+}
+.answer-option.reveal {
+  border-color: rgba(33, 132, 107, 0.65);
+  background: rgba(33, 132, 107, 0.18);
+  color: #e7fff4;
+  box-shadow: 0 0 0 2px rgba(33, 132, 107, 0.45);
+}
+.feedback.error {
+  color: #f4a8ad;
+}
+.feedback.good {
+  color: #8fe2c1;
+}
+
+.nav-button {
+  position: relative;
+}
+.nav-button .nav-badge,
+.bottom-button .nav-badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  min-width: 18px;
+  padding: 0 5px;
+  height: 18px;
+  border-radius: 999px;
+  background: #b92732;
+  color: #fffaf4;
+  font-style: normal;
+  font-weight: 800;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(185, 39, 50, 0.45);
+}
+
+.errors-layout {
+  display: grid;
+  gap: 18px;
+}
+.errors-list {
+  display: grid;
+  gap: 14px;
+}
+.mistake-card-row {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+.mistake-card-head {
+  display: grid;
+  gap: 4px;
+}
+.mistake-card-head > span {
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #f4a8ad;
+}
+.mistake-card-head strong {
+  font-size: 18px;
+}
+.mistake-card-head small {
+  color: #a99c8f;
+}
+
+.chunks-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 18px;
+}
+@media (max-width: 880px) {
+  .chunks-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.chunk-stage,
+.chunk-side {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+.chunk-card {
+  background: rgba(255, 250, 244, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+  position: relative;
+}
+.chunk-card strong {
+  font-size: 32px;
+  line-height: 1.1;
+}
+.chunk-card span {
+  color: #cdbfae;
+  font-weight: 600;
+}
+.chunk-card p {
+  margin: 0;
+  color: #f6f0e8;
+}
+.chunk-card small {
+  color: #a99c8f;
+}
+.chunk-card em {
+  color: #f4d27a;
+  font-style: normal;
+  font-size: 13px;
+}
+.chunk-card label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #cdbfae;
+}
+.chunk-card input {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 16, 12, 0.6);
+  color: #f6f0e8;
+  font-size: 18px;
+}
+.chunk-side .deck-list .deck-item.active {
+  border-color: #f4d27a;
+  background: rgba(244, 210, 122, 0.12);
+}
+.chunk-side .deck-list .deck-item {
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+.account-actions {
+  display: grid;
+  gap: 10px;
+}
+.account-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #f6f0e8;
+  font-weight: 700;
+  cursor: pointer;
+}
+.account-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.account-button.danger {
+  background: rgba(185, 39, 50, 0.18);
+  border-color: rgba(185, 39, 50, 0.4);
+  color: #ffd8db;
+}
+.account-button.danger:hover {
+  background: rgba(185, 39, 50, 0.3);
+}
+
+.profile-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}

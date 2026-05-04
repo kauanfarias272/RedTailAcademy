@@ -61,37 +61,49 @@ export type WritingCharacter = {
   strokeOrder: string[]
 }
 
+export type Chunk = {
+  id: string
+  unitId?: Unit['id']
+  hanzi: string
+  pinyin: string
+  portuguese: string
+  gloss: string
+  blank: string
+  blankAnswer: string
+  note: string
+}
+
 export const units: Unit[] = [
   {
     id: 'tones',
-    title: 'Pinyin e tons',
-    level: 'Fundacao',
+    title: 'Nadando na lagoa',
+    level: 'Fase 1',
     accent: 'red',
-    summary: 'Som, ritmo, tons e primeiras silabas.',
+    summary: 'O carpa testa a agua: som, ritmo, tons e primeiras silabas.',
     lessonIds: ['tones-hello', 'tones-four', 'tones-initials'],
   },
   {
     id: 'survival',
-    title: 'Mandarim de sobrevivencia',
-    level: 'HSK 1',
+    title: 'Subindo o rio',
+    level: 'Fase 2',
     accent: 'jade',
-    summary: 'Frases curtas para cumprimentar, agradecer e responder.',
+    summary: 'Cumprimentos, agradecimentos e respostas curtas para nao se perder na correnteza.',
     lessonIds: ['survival-greetings', 'survival-politeness', 'survival-questions'],
   },
   {
     id: 'numbers',
-    title: 'Numeros e compras',
-    level: 'HSK 1',
+    title: 'Cachoeira do Dragao',
+    level: 'Fase 3',
     accent: 'gold',
-    summary: 'Contar, perguntar preco e pedir coisas simples.',
+    summary: 'Contar, perguntar preco e pedir coisas para nao parar antes da cachoeira.',
     lessonIds: ['numbers-basic', 'numbers-money', 'numbers-order'],
   },
   {
     id: 'daily',
-    title: 'Vida diaria',
-    level: 'HSK 1+',
+    title: 'Saltando o Portao',
+    level: 'Fase 4',
     accent: 'ink',
-    summary: 'Familia, tempo, comida e rotinas.',
+    summary: 'Familia, tempo, comida e rotinas: o ultimo salto antes de virar dragao.',
     lessonIds: ['daily-family', 'daily-food', 'daily-time'],
   },
 ]
@@ -645,5 +657,118 @@ export const writingCharacters: WritingCharacter[] = [
     radical: '水',
     words: ['喝水', '一杯水', '水果'],
     strokeOrder: ['Vertical com gancho no centro.', 'Traço descendente esquerdo.', 'Traço curto direito.', 'Traço longo direito.'],
+  },
+]
+
+export const chunks: Chunk[] = [
+  {
+    id: 'chunk-meu-nome',
+    unitId: 'survival',
+    hanzi: '我叫卡蓝',
+    pinyin: 'wǒ jiào Kǎ-lán',
+    portuguese: 'me chamo Kauan',
+    gloss: 'eu / chamar / Kauan',
+    blank: '我___卡蓝',
+    blankAnswer: '叫',
+    note: 'Use 叫 (jiào) para apresentar como gosta de ser chamado. Troque o final pelo seu nome.',
+  },
+  {
+    id: 'chunk-tudo-bem',
+    unitId: 'survival',
+    hanzi: '你好吗',
+    pinyin: 'nǐ hǎo ma',
+    portuguese: 'tudo bem?',
+    gloss: 'voce / bem / (pergunta)',
+    blank: '你好___',
+    blankAnswer: '吗',
+    note: 'A particula 吗 (ma) transforma uma afirmacao em pergunta sim/nao.',
+  },
+  {
+    id: 'chunk-obrigado',
+    unitId: 'survival',
+    hanzi: '谢谢你',
+    pinyin: 'xièxie nǐ',
+    portuguese: 'obrigado a voce',
+    gloss: 'obrigado / voce',
+    blank: '谢谢___',
+    blankAnswer: '你',
+    note: 'Bloco fixo: 谢谢 vai sempre antes do alvo do agradecimento.',
+  },
+  {
+    id: 'chunk-quanto-custa',
+    unitId: 'numbers',
+    hanzi: '这个多少钱',
+    pinyin: 'zhège duōshao qián',
+    portuguese: 'quanto custa isto?',
+    gloss: 'isto / quanto / dinheiro',
+    blank: '这个___钱',
+    blankAnswer: '多少',
+    note: '多少钱 e o bloco de preco, sempre vem ao fim da pergunta.',
+  },
+  {
+    id: 'chunk-quero-isto',
+    unitId: 'numbers',
+    hanzi: '我要这个',
+    pinyin: 'wǒ yào zhège',
+    portuguese: 'eu quero este',
+    gloss: 'eu / querer / este',
+    blank: '我___这个',
+    blankAnswer: '要',
+    note: '要 (yào) funciona como pedido firme, comum em lojas e restaurantes.',
+  },
+  {
+    id: 'chunk-cafe',
+    unitId: 'numbers',
+    hanzi: '我想喝咖啡',
+    pinyin: 'wǒ xiǎng hē kāfēi',
+    portuguese: 'eu quero (gostaria de) tomar cafe',
+    gloss: 'eu / desejar / beber / cafe',
+    blank: '我___喝咖啡',
+    blankAnswer: '想',
+    note: '想 + verbo expressa desejo educado. 喝 + bebida e o bloco classico.',
+  },
+  {
+    id: 'chunk-vou-parque',
+    unitId: 'daily',
+    hanzi: '我去公园',
+    pinyin: 'wǒ qù gōngyuán',
+    portuguese: 'eu vou ao parque',
+    gloss: 'eu / ir / parque',
+    blank: '我___公园',
+    blankAnswer: '去',
+    note: '去 + lugar, sem preposicao no meio. Esse bloco vale para qualquer destino.',
+  },
+  {
+    id: 'chunk-tempo',
+    unitId: 'daily',
+    hanzi: '今天天气好',
+    pinyin: 'jīntiān tiānqì hǎo',
+    portuguese: 'hoje o tempo esta bom',
+    gloss: 'hoje / tempo / bom',
+    blank: '今天___好',
+    blankAnswer: '天气',
+    note: '天气 e a unidade pronta para descrever o clima. 好 fecha o bloco.',
+  },
+  {
+    id: 'chunk-gosto-comer',
+    unitId: 'daily',
+    hanzi: '我喜欢吃面',
+    pinyin: 'wǒ xǐhuan chī miàn',
+    portuguese: 'eu gosto de comer macarrao',
+    gloss: 'eu / gostar / comer / macarrao',
+    blank: '我___吃面',
+    blankAnswer: '喜欢',
+    note: '喜欢 + verbo + objeto e o bloco padrao para falar do que voce gosta de fazer.',
+  },
+  {
+    id: 'chunk-que-horas',
+    unitId: 'daily',
+    hanzi: '现在几点',
+    pinyin: 'xiànzài jǐ diǎn',
+    portuguese: 'que horas sao agora?',
+    gloss: 'agora / quantas / horas',
+    blank: '现在___点',
+    blankAnswer: '几',
+    note: '几点 e o bloco fixo para perguntar horas. 现在 marca o agora.',
   },
 ]

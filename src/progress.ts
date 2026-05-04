@@ -8,7 +8,7 @@ export type CardProgress = {
   correct: number
 }
 
-export type MistakeType = 'lesson' | 'card' | 'writing' | 'speech'
+export type MistakeType = 'lesson' | 'card' | 'writing' | 'speech' | 'chunk'
 
 export type LearningMistake = {
   id: string
