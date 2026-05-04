@@ -1348,12 +1348,34 @@ function mistakeLabel(type: LearningMistake['type']) {
 
 function RedTailLogo() {
   return (
-    <svg viewBox="0 0 64 64" role="presentation" aria-hidden="true">
-      <path className="logo-disc" d="M12 9h40c2.8 0 5 2.2 5 5v36c0 2.8-2.2 5-5 5H12c-2.8 0-5-2.2-5-5V14c0-2.8 2.2-5 5-5Z" />
-      <path className="logo-tail" d="M16 40c13-2 21-10 31-27 1 18-5 32-21 39 4-5 2-10-10-12Z" />
-      <path className="logo-stroke" d="M20 21h23M31 21v25M20 34h24" />
-      <path className="logo-spark" d="M47 37l6 3-6 3-3 6-3-6-6-3 6-3 3-6 3 6Z" />
-    </svg>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div
+        style={{
+          width: '32px',
+          height: '32px',
+          background: '#c1272d',
+          borderRadius: '5px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: "'Noto Serif SC', serif",
+          fontSize: '18px',
+          fontWeight: 700,
+          color: '#fff',
+          boxShadow: 'inset 0 0 0 1.5px rgba(212, 160, 74, 0.53)',
+        }}
+      >
+        紅
+      </div>
+      <div>
+        <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: '16px', fontWeight: 700, color: '#f5ead6', lineHeight: 1 }}>
+          RedTail
+        </div>
+        <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: '8.5px', color: '#d4a04a', letterSpacing: '2px', marginTop: '1px' }}>
+          A C A D E M Y
+        </div>
+      </div>
+    </div>
   )
 }
 
