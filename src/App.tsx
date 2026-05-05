@@ -203,6 +203,36 @@ const phraseConnectionMap: Record<string, string[]> = {
   'ming-tian': ['明天 conecta com 明天十点', 'Tempo vem antes do horario'],
   'wo-lei-le': ['了 marca mudanca de estado', '我 + estado conecta com 我很好'],
   'wo-xiang-xiu-xi': ['想 + verbo suaviza desejo', 'Mesmo 想 de 我想喝咖啡'],
+  'ta-shi-shei': ['谁 reaparece em perguntas de identidade', '他/她 so mudam genero na escrita'],
+  'ta-shi-wo-pengyou': ['朋友 volta de daily-family', '是 liga pessoa + papel/relacao'],
+  'wo-ai-wo-de-jia': ['我的家 expande 我家', '爱 aparece em gostos fortes'],
+  'ba-ma-dou-hao': ['都 marca todos no grupo', '好 conecta com 你好 e 天气很好'],
+  'ta-shi-laoshi': ['老师 conecta ao mundo Escola', '是 liga pessoa + profissao/papel'],
+  'wo-shi-xuesheng': ['学生 contrasta com 老师', '我是... vira estrutura de apresentacao'],
+  'wo-xuexi-zhongwen': ['学习 conecta com aluno/professor', '中文 reaparece em 会说中文'],
+  'ni-hui-shuo-zhongwen-ma': ['会 + verbo marca habilidade', '吗 transforma habilidade em pergunta'],
+  'zhe-shi-wo-de-shu': ['这是 apresenta objetos', '的 marca posse de forma clara'],
+  'diannao-zai-zhuozi-shang': ['在 localiza coisas', '上 adiciona posicao em cima'],
+  'wo-kan-shu': ['看 muda pelo objeto: ver ou ler', '书 conecta com 这是我的书'],
+  'qing-xie-hanzi': ['请 suaviza comandos', '写 conecta com treino de hanzi'],
+  'wo-qu-xuexiao': ['去 + lugar e destino', '学校 conecta com 学生 e 老师'],
+  'ta-lai-zhongguo': ['来 e o par de 去', '中国 conecta com 中文 e 中国人'],
+  'wo-zuo-chuzuche': ['坐 + transporte', '出租车 entra em deslocamento urbano'],
+  'huochezhan-zai-nali': ['在哪里 reaparece de banheiro', '站 marca lugar de transporte'],
+  'shangdian-you-shui': ['有 marca existencia/posse', '水 conecta com 喝水 e 一杯水'],
+  'wo-yao-mai-shuiguo': ['要 + 买 cria intencao de compra', '水果 conecta comida e mercado'],
+  'jintian-xingqi-yi': ['今天 coloca tempo antes da frase', '星期 + numero forma dias'],
+  'xianzai-ba-dian': ['现在 marca agora', '点 conecta com 三点 e 十点'],
+  'tianqi-hen-hao': ['天气 conecta com 今天', '很好 reaproveita 好'],
+  'xianzai-xia-yu': ['下雨 e bloco fixo de clima', '现在 liga ao momento atual'],
+  'wo-hui-shuo-yidian-zhongwen': ['会说中文 expande a pergunta de habilidade', '一点 deixa a frase humilde'],
+  'wo-xihuan-he-cha': ['喜欢 + verbo/objeto', '喝 conecta agua, cafe e cha'],
+  'ni-jiao-shenme-mingzi': ['叫什么名字 e bloco de apresentacao', '什么 pergunta sobre coisa/nome'],
+  'wo-jiao-kauan': ['我叫 apresenta nome', 'Troque o final por qualquer nome'],
+  'ni-shi-na-guo-ren': ['哪 + pais + 人 pergunta nacionalidade', '人 volta de pessoa'],
+  'wo-ershi-sui': ['岁 marca idade sem verbo ter', '二十 combina 二 + 十'],
+  'ni-zhu-zai-nar': ['住在 + lugar fala onde mora', '哪儿 e alternativa curta de 哪里'],
+  'wo-zhu-zai-beijing': ['住在 reaproveita a pergunta anterior', 'Troque 北京 por sua cidade'],
 }
 
 const chunkConnectionMap: Record<string, string[]> = {
@@ -218,6 +248,17 @@ const chunkConnectionMap: Record<string, string[]> = {
   'chunk-que-horas': ['现在 marca agora', '几点 reaparece em horarios'],
   'chunk-banheiro': ['请问 + pergunta educada', '在哪里 troca o lugar sem mudar a estrutura'],
   'chunk-descansar': ['想 + verbo reaparece em 我想喝咖啡', '休息 conecta com energia/cansaco'],
+  'chunk-quem-e-ele': ['谁 fecha perguntas sobre pessoa', '是 liga pessoa + identidade'],
+  'chunk-sou-estudante': ['我是... serve para apresentacao', '学生 contrasta com 老师'],
+  'chunk-falo-chines': ['会 + 说 marca habilidade oral', '中文 volta em 学习中文'],
+  'chunk-meu-livro': ['这是 apresenta objetos', '我的 marca posse'],
+  'chunk-vou-escola': ['去 + destino', '学校 conecta cidade e estudo'],
+  'chunk-taxi': ['坐 + transporte', 'Mesmo padrao para trem/aviao/onibus'],
+  'chunk-comprar-fruta': ['要 + 买 + objeto', '水果 conecta comida e compras'],
+  'chunk-hoje-segunda': ['星期 + numero', '今天 marca o tempo da frase'],
+  'chunk-um-pouco-chines': ['一点 suaviza habilidade', '会说中文 fecha checkpoint oral'],
+  'chunk-qual-nome': ['叫什么名字 e bloco de prova', '名字 completa a pergunta'],
+  'chunk-onde-mora': ['住在 + lugar', '哪儿 pergunta onde de forma curta'],
 }
 
 function App() {
@@ -463,8 +504,13 @@ function App() {
 
   const quizPhrase = selectedLesson.phrases[lessonStep] ?? selectedLesson.phrases[0]
   const options = useMemo(() => {
+    const answerPool = Array.from(new Set([
+      ...allPhrases.map((item) => item.portuguese),
+      ...quizOptions,
+    ]))
     const distractors = quizOptions
-      .filter((option) => option && option !== quizPhrase.portuguese)
+      .concat(answerPool)
+      .filter((option, index, list) => option && option !== quizPhrase.portuguese && list.indexOf(option) === index)
       .sort((left, right) => optionRank(`${selectedLesson.id}-${quizPhrase.id}`, left) - optionRank(`${selectedLesson.id}-${quizPhrase.id}`, right))
       .slice(0, 3)
 
@@ -1781,7 +1827,7 @@ function LearnView({
     )
   }
 
-  const phaseHanzi = ['池', '河', '瀑', '門']
+  const phaseHanzi = ['池', '河', '瀑', '門', '人', '書', '市', '天', '考']
 
   return (
     <div className="learn-grid c-screen">
@@ -1833,8 +1879,8 @@ function LearnView({
         })}
         <div className="c-dragon-gate">
           <span>龍</span>
-          <strong>Portao do Dragao</strong>
-          <small>HSK 1 libera ao completar todas as fases</small>
+          <strong>Portao HSK1</strong>
+          <small>Checkpoint libera quando voce fechar os mundos da trilha</small>
         </div>
       </section>
     </div>
