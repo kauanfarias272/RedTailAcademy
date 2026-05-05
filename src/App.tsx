@@ -107,10 +107,13 @@ const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen; symbol: s
   { id: 'learn', label: 'Trilha', icon: BookOpen, symbol: '本' },
   { id: 'practice', label: 'Treino', icon: Layers3, symbol: '卡' },
   { id: 'errors', label: 'Erros', icon: AlertTriangle, symbol: '⚠' },
-  { id: 'clips', label: 'Cultura', icon: Headphones, symbol: '乐' },
-  { id: 'mascot', label: 'Koi', icon: Fish, symbol: '魚' },
-  { id: 'profile', label: 'Ritmo', icon: Trophy, symbol: '節' },
   { id: 'clan', label: 'Clã', icon: Users, symbol: '族' },
+  { id: 'profile', label: 'Ritmo', icon: Trophy, symbol: '節' },
+]
+
+const secondaryNavItems: Array<{ id: Tab; label: string; icon: typeof BookOpen }> = [
+  { id: 'clips', label: 'Cultura', icon: Headphones },
+  { id: 'mascot', label: 'Koi', icon: Fish },
 ]
 
 const quizOptions = [
@@ -1059,6 +1062,46 @@ function App() {
           coins={progress.coins}
           streak={progress.streak}
           freeze={progress.freezeStreaks}
+          utilitySlot={
+            <>
+              <div className="utility-quick-row">
+                {secondaryNavItems.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={activeTab === item.id ? 'utility-icon active' : 'utility-icon'}
+                      onClick={() => setActiveTab(item.id)}
+                      title={item.label}
+                      aria-label={item.label}
+                    >
+                      <Icon size={18} />
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                type="button"
+                className="utility-account"
+                onClick={async () => {
+                  if (effectiveUser) {
+                    const ok = window.confirm('Sair da conta agora?')
+                    if (!ok) return
+                    if (guestEmail) leaveGuest()
+                    try { await signOut(auth) } catch { /* ignore */ }
+                  } else {
+                    setActiveTab('profile')
+                  }
+                }}
+                title={effectiveUser ? 'Sair da conta' : 'Entrar / criar conta'}
+                aria-label={effectiveUser ? 'Sair da conta' : 'Entrar'}
+              >
+                {effectiveUser ? <LogOut size={16} /> : <LogIn size={16} />}
+                <span>{effectiveUser ? (guestEmail ? 'Convidado' : (effectiveUser.email?.split('@')[0] || 'Conta')) : 'Entrar'}</span>
+              </button>
+            </>
+          }
         />
 
         {activeTab === 'learn' && (
@@ -1983,20 +2026,22 @@ function ChunksView({
             <button className="sound-button" type="button" onClick={() => onSpeak(chunk.hanzi)} title="Ouvir bloco">
               <Volume2 size={24} />
             </button>
-            <strong>{chunk.hanzi}</strong>
-            <span>{chunk.pinyin}</span>
-            <p>{chunk.portuguese}</p>
-            <small>{chunk.gloss}</small>
-            <em>{chunk.note}</em>
+            <p className="eyebrow">Ouca o bloco</p>
+            <strong>{chunk.portuguese}</strong>
+            <span>Toque no alto-falante para ouvir o mandarim. Voce vai construir a frase no proximo passo.</span>
             <button className="primary-action" type="button" onClick={() => setStage('gap')}>
-              Treinar bloco <ChevronRight size={18} />
+              Construir bloco <ChevronRight size={18} />
             </button>
           </div>
         )}
 
         {stage === 'gap' && (
           <div className="chunk-card chunk-builder-card">
-            <p className="eyebrow">Complete o bloco</p>
+            <p className="eyebrow">Arraste o bloco que falta</p>
+            <p className="chunk-prompt">{chunk.portuguese}</p>
+            <button className="sound-button inline" type="button" onClick={() => onSpeak(chunk.hanzi)} title="Ouvir frase completa">
+              <Volume2 size={18} /> ouvir frase
+            </button>
             <div
               className={isDropReady ? 'chunk-drop-zone ready' : answer ? 'chunk-drop-zone filled' : 'chunk-drop-zone'}
               onDragOver={(event) => {
@@ -2016,7 +2061,6 @@ function ChunksView({
               </button>
               <span>{blankAfter}</span>
             </div>
-            <p className="chunk-context">{chunk.portuguese}</p>
             <div className="chunk-option-bank" aria-label="Opcoes de blocos">
               {chunkOptions.map((option) => (
                 <button
@@ -2046,7 +2090,9 @@ function ChunksView({
             </p>
             <strong>{chunk.hanzi}</strong>
             <span>{chunk.pinyin}</span>
+            <p>{chunk.portuguese}</p>
             <small>{chunk.gloss}</small>
+            <em>{chunk.note}</em>
             <button className="primary-action" type="button" onClick={next}>
               Proximo bloco <ChevronRight size={18} />
             </button>
@@ -2485,17 +2531,17 @@ function validateWritingAttempt(
     return { ok: false, message: `Meta: ${character.strokes} tracos principais.` }
   }
 
-  const minimumUsefulStrokes = Math.max(1, Math.floor(character.strokes * 0.45))
+  const minimumUsefulStrokes = Math.max(2, Math.floor(character.strokes * 0.7))
   if (strokesDrawn < minimumUsefulStrokes) {
     return {
       ok: false,
-      message: `Faltam movimentos principais. Faca pelo menos ${minimumUsefulStrokes} traco(s) claros.`,
+      message: `Faltam movimentos principais. Faca pelo menos ${minimumUsefulStrokes} tracos claros.`,
     }
   }
 
   const points = strokes.flat()
-  if (points.length < Math.max(8, character.strokes * 3)) {
-    return { ok: false, message: 'Trace um pouco mais antes de validar.' }
+  if (points.length < Math.max(14, character.strokes * 5)) {
+    return { ok: false, message: 'Trace mais antes de validar — caractere ainda pouco definido.' }
   }
 
   const bounds = getPointBounds(points)
@@ -2509,11 +2555,11 @@ function validateWritingAttempt(
     minPathLength: WRITING_MIN_PATH,
   }
 
-  if (widthRatio < template.minWidthRatio * 0.68 || heightRatio < template.minHeightRatio * 0.68) {
+  if (widthRatio < template.minWidthRatio * 0.82 || heightRatio < template.minHeightRatio * 0.82) {
     return { ok: false, message: 'A forma ficou pequena ou concentrada. Use mais espaco do grid do hanzi.' }
   }
 
-  if (pathLength < template.minPathLength * 0.55) {
+  if (pathLength < template.minPathLength * 0.75) {
     return { ok: false, message: 'O caminho ficou curto demais. Complete mais o caractere.' }
   }
 
@@ -2524,7 +2570,7 @@ function validateWritingAttempt(
       return `${col}-${row}`
     }),
   )
-  if (touchedFineCells.size < Math.max(3, Math.ceil(character.strokes * 0.45))) {
+  if (touchedFineCells.size < Math.max(4, Math.ceil(character.strokes * 0.6))) {
     return { ok: false, message: 'A forma cobriu poucas areas do hanzi. Espalhe o traco seguindo a sombra.' }
   }
 
@@ -2536,7 +2582,7 @@ function validateWritingAttempt(
     }),
   )
   const hitCells = template.cells.filter((cell) => touchedCells.has(cell)).length
-  const neededCells = Math.max(2, Math.ceil(template.cells.length * 0.45))
+  const neededCells = Math.max(3, Math.ceil(template.cells.length * 0.65))
 
   if (hitCells < neededCells) {
     return { ok: false, message: 'A forma nao bateu com a estrutura do hanzi. Siga a sombra como guia.' }

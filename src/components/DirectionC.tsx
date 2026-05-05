@@ -54,6 +54,7 @@ export function DirectionCHeader({
   coins,
   streak,
   freeze,
+  utilitySlot,
 }: {
   phaseTag?: string
   title: string
@@ -63,9 +64,11 @@ export function DirectionCHeader({
   coins: number
   streak: number
   freeze: number
+  utilitySlot?: ReactNode
 }) {
   return (
     <header className="directionc-header">
+      {utilitySlot ? <div className="directionc-utility">{utilitySlot}</div> : null}
       <div className="directionc-header-top">
         <div className="directionc-seal-row">
           <div className="directionc-seal">印</div>
