@@ -38,6 +38,7 @@ export type LearningProgress = {
   streak: number
   lastStudyDate: string
   completedLessons: string[]
+  lessonReviews: Record<string, LessonReview>
   speakingSessions: number
   writingSessions: number
   spokenPhrases: string[]
@@ -55,6 +56,13 @@ export type LearningProgress = {
   }
   personalGoal: PersonalGoal
   clanId: string | null
+}
+
+export type LessonReview = {
+  completedAt: number
+  lastReviewedAt: number
+  nextReviewAt: number
+  reviewCount: number
 }
 
 export type SavedClip = {
@@ -81,6 +89,7 @@ export const defaultProgress: LearningProgress = {
   streak: 0,
   lastStudyDate: '',
   completedLessons: [],
+  lessonReviews: {},
   speakingSessions: 0,
   writingSessions: 0,
   spokenPhrases: [],
@@ -112,6 +121,7 @@ export function useStoredProgress() {
           coins: typeof parsed.coins === 'number' ? parsed.coins : defaultProgress.coins,
           mistakes: Array.isArray(parsed.mistakes) ? parsed.mistakes : [],
           spokenPhrases: Array.isArray(parsed.spokenPhrases) ? parsed.spokenPhrases : [],
+          lessonReviews: parsed.lessonReviews && typeof parsed.lessonReviews === 'object' ? parsed.lessonReviews : {},
           mascot: { ...defaultMascotState, ...(parsed.mascot ?? {}) },
           dailyGoals: normalizeDailyGoals(parsed.dailyGoals, parsed.dailyGoals?.date ?? ''),
           personalGoal: normalizePersonalGoal(parsed.personalGoal),

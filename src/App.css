@@ -2879,6 +2879,36 @@ body,
   opacity: 0.55;
 }
 
+.c-node.locked,
+.c-node:disabled {
+  cursor: not-allowed;
+}
+
+.c-node:disabled .c-node-copy strong,
+.c-node:disabled .c-node-copy small {
+  color: var(--c-ink-mute);
+}
+
+.c-node.review-ready {
+  border-color: rgba(90, 139, 106, 0.52);
+  background: linear-gradient(135deg, rgba(90, 139, 106, 0.14), var(--c-surface));
+}
+
+.c-node.review-ready .c-node-icon,
+.c-node.review-ready .c-node-copy small {
+  color: var(--c-jade);
+  border-color: rgba(90, 139, 106, 0.52);
+}
+
+.c-node.cooldown {
+  border-style: dashed;
+  opacity: 0.78;
+}
+
+.c-node.cooldown .c-node-copy small {
+  color: var(--c-ink-dim);
+}
+
 .c-now {
   position: absolute;
   top: -8px;

@@ -103,6 +103,7 @@ type MandarinSpeechPlugin = {
 
 const MandarinTts = registerPlugin<MandarinTtsPlugin>('MandarinTts')
 const MandarinSpeech = registerPlugin<MandarinSpeechPlugin>('MandarinSpeech')
+const LESSON_REVIEW_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000
 
 const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen; symbol: string }> = [
   { id: 'learn', label: 'Trilha', icon: BookOpen, symbol: '本' },
@@ -545,8 +546,10 @@ function App() {
 
   function completeLesson(lesson: Lesson) {
     setProgress((current) => {
+      const completedAt = Date.now()
       const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
       const alreadyCompleted = current.completedLessons.includes(lesson.id)
+      const previousReview = current.lessonReviews[lesson.id]
       const cards = { ...current.cards }
       lesson.phrases.forEach((phrase) => {
         cards[phrase.id] = cards[phrase.id] ?? {
@@ -566,6 +569,15 @@ function App() {
         completedLessons: alreadyCompleted
           ? current.completedLessons
           : [...current.completedLessons, lesson.id],
+        lessonReviews: {
+          ...current.lessonReviews,
+          [lesson.id]: {
+            completedAt: previousReview?.completedAt ?? completedAt,
+            lastReviewedAt: completedAt,
+            nextReviewAt: completedAt + LESSON_REVIEW_COOLDOWN_MS,
+            reviewCount: alreadyCompleted ? (previousReview?.reviewCount ?? 0) + 1 : (previousReview?.reviewCount ?? 0),
+          },
+        },
         cards,
         dailyGoals: {
           ...dailyGoals,
@@ -589,6 +601,15 @@ function App() {
   }
 
   function startLesson(lessonId: string) {
+    const access = lessonAccess(lessonId, progress, Date.now())
+    if (!access.canStart) {
+      flashToast('bad', access.message)
+      if (access.kind === 'locked') {
+        setSelectedLessonId(firstPlayableLessonId(progress))
+      }
+      return
+    }
+
     if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
     setIsAutoAdvancing(false)
     setLessonStep(0)
@@ -779,17 +800,28 @@ function App() {
         ? afterMistake.spokenPhrases
         : [...afterMistake.spokenPhrases, matchedPhrase.id]
 
-      // If every phrase of any lesson is now spoken, complete that lesson.
+      // Speaking can complete only the next required lesson, never future nodes.
       let completed = afterMistake.completedLessons
+      const lessonReviews = { ...afterMistake.lessonReviews }
+      const nextLessonByOrder = nextRequiredLessonId(afterMistake)
       let bonusXp = 0
       let bonusCoins = 0
       let mascot = afterMistake.mascot
       const dailyLessons = { ...afterMistake.dailyGoals }
+      const completedAt = Date.now()
       lessons.forEach((lesson) => {
         if (completed.includes(lesson.id)) return
+        if (lesson.id !== nextLessonByOrder) return
         const allSpoken = lesson.phrases.every((phrase) => spoken.includes(phrase.id))
         if (allSpoken) {
           completed = [...completed, lesson.id]
+          const previousReview = lessonReviews[lesson.id]
+          lessonReviews[lesson.id] = {
+            completedAt: previousReview?.completedAt ?? completedAt,
+            lastReviewedAt: completedAt,
+            nextReviewAt: completedAt + LESSON_REVIEW_COOLDOWN_MS,
+            reviewCount: previousReview?.reviewCount ?? 0,
+          }
           bonusXp += lesson.xp
           bonusCoins += 12
           dailyLessons.lessons = (dailyLessons.lessons ?? 0) + 1
@@ -801,6 +833,7 @@ function App() {
         ...afterMistake,
         spokenPhrases: spoken,
         completedLessons: completed,
+        lessonReviews,
         xp: afterMistake.xp + bonusXp,
         coins: afterMistake.coins + bonusCoins,
         dailyGoals: dailyLessons,
@@ -1270,6 +1303,7 @@ function App() {
             isAutoAdvancing={isAutoAdvancing}
             options={options}
             progress={progress}
+            currentTime={now || Date.now()}
             isLessonActive={isLessonActive}
             onSelectLesson={startLesson}
             onCloseLesson={() => setIsLessonActive(false)}
@@ -1564,6 +1598,50 @@ function getNextLessonId(currentLessonId: string) {
   return lessons[index + 1]?.id ?? ''
 }
 
+function nextRequiredLessonId(progress: Pick<LearningProgress, 'completedLessons'>) {
+  return lessons.find((lesson) => !progress.completedLessons.includes(lesson.id))?.id ?? ''
+}
+
+function firstPlayableLessonId(progress: Pick<LearningProgress, 'completedLessons'>) {
+  return nextRequiredLessonId(progress) || lessons[0].id
+}
+
+function lessonAccess(lessonId: string, progress: Pick<LearningProgress, 'completedLessons' | 'lessonReviews'>, timestamp: number) {
+  const index = lessons.findIndex((lesson) => lesson.id === lessonId)
+  const completed = progress.completedLessons.includes(lessonId)
+
+  if (index < 0) {
+    return { kind: 'locked' as const, canStart: false, label: 'Bloqueada', message: 'Licao nao encontrada.' }
+  }
+
+  if (!completed) {
+    const previousLesson = lessons[index - 1]
+    const unlocked = !previousLesson || progress.completedLessons.includes(previousLesson.id)
+    return unlocked
+      ? { kind: 'current' as const, canStart: true, label: `+${lessons[index].xp} XP`, message: '' }
+      : { kind: 'locked' as const, canStart: false, label: 'Bloqueada', message: `Complete "${previousLesson.title}" para liberar esta licao.` }
+  }
+
+  const review = progress.lessonReviews[lessonId]
+  const nextReviewAt = review?.nextReviewAt ?? 0
+  if (timestamp >= nextReviewAt) {
+    return { kind: 'review' as const, canStart: true, label: 'Revisar', message: 'Revisao liberada. Sem XP extra.' }
+  }
+
+  return {
+    kind: 'cooldown' as const,
+    canStart: false,
+    label: `Em ${formatLessonCooldown(nextReviewAt - timestamp)}`,
+    message: `Essa licao ja foi feita. Revisao libera em ${formatLessonCooldown(nextReviewAt - timestamp)} e nao da XP extra.`,
+  }
+}
+
+function formatLessonCooldown(ms: number) {
+  const hours = Math.max(1, Math.ceil(ms / (60 * 60 * 1000)))
+  if (hours < 24) return `${hours}h`
+  return `${Math.ceil(hours / 24)}d`
+}
+
 function normalizeSpeechText(text: string) {
   return text.replace(/[?？,，.。]/g, ' ').replace(/\s+/g, ' ').trim()
 }
@@ -1739,6 +1817,7 @@ function LearnView({
   isAutoAdvancing,
   options,
   progress,
+  currentTime,
   isLessonActive,
   onSelectLesson,
   onCloseLesson,
@@ -1756,6 +1835,7 @@ function LearnView({
   isAutoAdvancing: boolean
   options: string[]
   progress: LearningProgress
+  currentTime: number
   isLessonActive: boolean
   onSelectLesson: (lessonId: string) => void
   onCloseLesson: () => void
@@ -1917,26 +1997,32 @@ function LearnView({
                   const lesson = lessons.find((item) => item.id === lessonId)
                   if (!lesson) return null
                   const completed = progress.completedLessons.includes(lesson.id)
+                  const access = lessonAccess(lesson.id, progress, currentTime)
                   const active = selectedLessonId === lesson.id
+                  const locked = access.kind === 'locked'
                   return (
                     <button
                       className={[
                         'c-node',
                         active ? 'active' : '',
                         completed ? 'done' : '',
-                        !active && !completed ? 'locked' : '',
+                        access.kind === 'review' ? 'review-ready' : '',
+                        access.kind === 'cooldown' ? 'cooldown' : '',
+                        locked ? 'locked' : '',
                       ].filter(Boolean).join(' ')}
                       key={lesson.id}
                       type="button"
+                      disabled={locked}
+                      aria-disabled={!access.canStart}
                       onClick={() => onSelectLesson(lesson.id)}
                     >
                       {active && <span className="c-now">Agora</span>}
                       <span className="c-node-icon">
-                        {completed ? <CheckCircle2 size={18} /> : active ? <GraduationCap size={18} /> : <LockKeyhole size={16} />}
+                        {locked ? <LockKeyhole size={16} /> : completed ? <CheckCircle2 size={18} /> : active ? <GraduationCap size={18} /> : <BookOpen size={16} />}
                       </span>
                       <span className="c-node-copy">
                         <strong>{lesson.title}</strong>
-                        <small>+{lesson.xp} XP</small>
+                        <small>{access.label}</small>
                       </span>
                     </button>
                   )
