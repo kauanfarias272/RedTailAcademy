@@ -31,12 +31,14 @@ import {
   Users,
   Volume2,
 } from 'lucide-react'
+import { DirectionCHeader, DirectionCNavButton } from './components/DirectionC'
+import { Logo1, LogoVertical } from './components/Logos'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { auth, deleteCurrentAccount } from './firebase'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User, GoogleAuthProvider, signInWithCredential, signInWithRedirect, getRedirectResult } from 'firebase/auth'
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, FormEvent, PointerEvent as ReactPointerEvent } from 'react'
+import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react'
 import './App.css'
 import {
   allPhrases,
@@ -101,14 +103,14 @@ type MandarinSpeechPlugin = {
 const MandarinTts = registerPlugin<MandarinTtsPlugin>('MandarinTts')
 const MandarinSpeech = registerPlugin<MandarinSpeechPlugin>('MandarinSpeech')
 
-const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen }> = [
-  { id: 'learn', label: 'Trilha', icon: BookOpen },
-  { id: 'practice', label: 'Treino', icon: Layers3 },
-  { id: 'errors', label: 'Erros', icon: AlertTriangle },
-  { id: 'clan', label: 'Cla', icon: Users },
-  { id: 'clips', label: 'Estudar', icon: Headphones },
-  { id: 'mascot', label: 'Koi', icon: Fish },
-  { id: 'profile', label: 'Perfil', icon: Trophy },
+const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen; symbol: string }> = [
+  { id: 'learn', label: 'Trilha', icon: BookOpen, symbol: '本' },
+  { id: 'practice', label: 'Treino', icon: Layers3, symbol: '卡' },
+  { id: 'errors', label: 'Erros', icon: AlertTriangle, symbol: '⚠' },
+  { id: 'clips', label: 'Cultura', icon: Headphones, symbol: '乐' },
+  { id: 'mascot', label: 'Koi', icon: Fish, symbol: '魚' },
+  { id: 'profile', label: 'Ritmo', icon: Trophy, symbol: '節' },
+  { id: 'clan', label: 'Clã', icon: Users, symbol: '族' },
 ]
 
 const quizOptions = [
@@ -384,7 +386,6 @@ function App() {
 
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) ?? lessons[0]
   const unresolvedMistakes = openMistakes(progress)
-  const mascotEvolutionLocked = unresolvedMistakes.length > 0
   const userLevel = progressLevel(progress.xp)
   const completedCount = progress.completedLessons.length
   const dueCards = allPhrases.filter((phrase) => {
@@ -871,9 +872,9 @@ function App() {
 
   if (!effectiveUser) {
     return (
-      <div className="app-shell" style={{ display: 'grid', placeItems: 'center', padding: '20px' }}>
+      <div className="app-shell auth-shell">
         <form
-          className="lesson-panel"
+          className="lesson-panel auth-panel"
           style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px' }}
           onSubmit={async (e) => {
             e.preventDefault()
@@ -891,7 +892,7 @@ function App() {
           }}
         >
           <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-            <h2 style={{ margin: 0 }}>RedTail Academy</h2>
+            <LogoVertical dark={true} />
             <p style={{ margin: 0, color: '#796f66' }}>{isRegistering ? 'Crie sua conta' : 'Acesse sua conta'}</p>
           </div>
           
@@ -988,16 +989,24 @@ function App() {
     )
   }
 
+  const headerMeta = getDirectionCHeaderMeta({
+    tab: activeTab,
+    currentLevel: currentUnit.level,
+    levelProgress,
+    dueCards: dueCards.length,
+    unresolvedMistakes: unresolvedMistakes.length,
+    userLevel,
+    personalGoalLabel: progress.personalGoal.label,
+    guestEmail,
+    userEmail: effectiveUser?.email ?? null,
+  })
+
   return (
     <main className="app-shell">
       <aside className="side-nav" aria-label="Navegacao principal">
         <div className="brand-lockup">
-          <div className="brand-mark" aria-hidden="true">
-            <RedTailLogo />
-          </div>
-          <div>
-            <strong>RedTail Academy</strong>
-            <small>{effectiveUser?.email || 'Mandarim vivo'}</small>
+          <div className="brand-mark brand-mark-logo" aria-hidden="true">
+            <Logo1 dark={true} />
           </div>
         </div>
 
@@ -1041,38 +1050,16 @@ function App() {
       </aside>
 
       <section className="workspace">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">{currentUnit.level}</p>
-            <h1>{activeTitle(activeTab)}</h1>
-          </div>
-          <div className="topbar-actions">
-            <div className="hud-pill hud-coins" title={`Voce tem ${progress.coins} moedas`}>
-              <Target size={16} />
-              <strong>{progress.coins}</strong>
-              <span>moedas</span>
-            </div>
-            <div className="hud-pill hud-streak" title="Sua sequencia de dias estudando">
-              <Flame size={16} />
-              <strong>{progress.streak}</strong>
-              <span>streak</span>
-            </div>
-            <div className="hud-pill hud-freeze" title="Freeze streaks disponiveis">
-              <ShieldCheck size={16} />
-              <strong>{progress.freezeStreaks}</strong>
-              <span>freeze</span>
-            </div>
-            <div className="progress-ring" style={{ '--progress': `${levelProgress}%` } as CSSProperties}>
-              <span>{levelProgress}%</span>
-            </div>
-            {mascotEvolutionLocked && (
-              <span className="evolution-lock" title="Corrija seus erros para voltar a evoluir o mascote">
-                <LockKeyhole size={15} />
-                {unresolvedMistakes.length} erros
-              </span>
-            )}
-          </div>
-        </header>
+        <DirectionCHeader
+          phaseTag={headerMeta.phaseTag}
+          title={headerMeta.title}
+          titleAccent={headerMeta.titleAccent}
+          sub={headerMeta.sub}
+          errors={headerMeta.errors}
+          coins={progress.coins}
+          streak={progress.streak}
+          freeze={progress.freezeStreaks}
+        />
 
         {activeTab === 'learn' && (
           <LearnView
@@ -1092,7 +1079,6 @@ function App() {
             onChoose={chooseQuizAnswer}
             onSpeak={speak}
             onAdvanceNow={advanceLessonFlow}
-            dailyGoals={progress.dailyGoals}
           />
         )}
         {activeTab === 'practice' && (
@@ -1276,9 +1262,13 @@ function App() {
               onClick={() => setActiveTab(item.id)}
               title={item.label}
             >
-              <Icon size={20} />
-              <span>{item.label}</span>
-              {badge > 0 && <em className="nav-badge">{badge}</em>}
+              <DirectionCNavButton
+                Icon={Icon}
+                label={item.label}
+                active={activeTab === item.id}
+                badge={badge}
+                symbol={item.symbol}
+              />
             </button>
           )
         })}
@@ -1287,17 +1277,85 @@ function App() {
   )
 }
 
-function activeTitle(tab: Tab) {
-  const labels: Record<Tab, string> = {
-    learn: 'Trilha do Carpa-Dragao',
-    practice: 'Treino diario',
-    errors: 'Corrigir erros',
-    clan: 'Cla do Dragao',
-    clips: 'Estudar com cultura',
-    mascot: 'Seu companheiro Koi',
-    profile: 'Seu ritmo',
+function getDirectionCHeaderMeta({
+  tab,
+  currentLevel,
+  levelProgress,
+  dueCards,
+  unresolvedMistakes,
+  userLevel,
+  personalGoalLabel,
+  guestEmail,
+  userEmail,
+}: {
+  tab: Tab
+  currentLevel: string
+  levelProgress: number
+  dueCards: number
+  unresolvedMistakes: number
+  userLevel: number
+  personalGoalLabel: string
+  guestEmail: string | null
+  userEmail: string | null
+}) {
+  switch (tab) {
+    case 'learn':
+      return {
+        phaseTag: `${currentLevel} · ${levelProgress}%`,
+        title: 'Trilha do',
+        titleAccent: 'Carpa-Dragao',
+        sub: 'Suba o rio, fase a fase, ate saltar o Portao.',
+        errors: unresolvedMistakes,
+      }
+    case 'practice':
+      return {
+        phaseTag: `Hoje · ${dueCards} cartoes`,
+        title: 'Treino',
+        titleAccent: 'diario',
+        sub: 'Mantenha a sequencia. Domine os 4 tons.',
+        errors: unresolvedMistakes,
+      }
+    case 'errors':
+      return {
+        phaseTag: `${unresolvedMistakes} pendentes`,
+        title: 'Corrigir',
+        titleAccent: 'erros',
+        sub: 'Cada acerto remove um bloqueio do mascote.',
+        errors: 0,
+      }
+    case 'clan':
+      return {
+        phaseTag: 'Liga semanal',
+        title: 'Cla do',
+        titleAccent: 'Dragao',
+        sub: 'Junte-se a um grupo e some XP coletivo.',
+        errors: 0,
+      }
+    case 'clips':
+      return {
+        phaseTag: 'Aba estudar',
+        title: 'Estudar com',
+        titleAccent: 'cultura',
+        sub: 'Memes, musicas e contexto real para fixar frases.',
+        errors: 0,
+      }
+    case 'mascot':
+      return {
+        phaseTag: `Nivel ${userLevel}`,
+        title: 'Companheiro',
+        titleAccent: 'Koi',
+        sub: 'Cuide do mascote e libere a evolucao.',
+        errors: 0,
+      }
+    case 'profile':
+      return {
+        phaseTag: guestEmail ? 'Convidado' : (userEmail ? 'Conta' : 'Perfil'),
+        title: 'Carpa',
+        titleAccent: 'na lagoa',
+        sub: `Nivel ${userLevel} · meta de ${personalGoalLabel}`,
+        errors: unresolvedMistakes,
+      }
   }
-  return labels[tab]
 }
 
 function optionRank(seed: string, value: string) {
@@ -1346,39 +1404,6 @@ function mistakeLabel(type: LearningMistake['type']) {
   return labels[type]
 }
 
-function RedTailLogo() {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <div
-        style={{
-          width: '32px',
-          height: '32px',
-          background: '#c1272d',
-          borderRadius: '5px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: "'Noto Serif SC', serif",
-          fontSize: '18px',
-          fontWeight: 700,
-          color: '#fff',
-          boxShadow: 'inset 0 0 0 1.5px rgba(212, 160, 74, 0.53)',
-        }}
-      >
-        紅
-      </div>
-      <div>
-        <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: '16px', fontWeight: 700, color: '#f5ead6', lineHeight: 1 }}>
-          RedTail
-        </div>
-        <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: '8.5px', color: '#d4a04a', letterSpacing: '2px', marginTop: '1px' }}>
-          A C A D E M Y
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function Stat({
   icon: Icon,
   label,
@@ -1416,7 +1441,6 @@ function LearnView({
   onChoose,
   onSpeak,
   onAdvanceNow,
-  dailyGoals,
 }: {
   selectedLesson: Lesson
   selectedLessonId: string
@@ -1434,7 +1458,6 @@ function LearnView({
   onChoose: (choice: string) => void
   onSpeak: (text: string) => void
   onAdvanceNow: () => void
-  dailyGoals: LearningProgress['dailyGoals']
 }) {
   const isCorrect = quizChoice === phrase.portuguese
   const unitCompletion = (unitId: string) => {
@@ -1534,85 +1557,60 @@ function LearnView({
     )
   }
 
-  return (
-    <div className="learn-grid">
-      <section className="daily-mission-card" aria-label="Missao diaria">
-        <p className="eyebrow">Missao Diaria</p>
-        <h2>Complete uma licao, revise dois cartoes e grave uma frase.</h2>
-        <div className="mission-items">
-          <div className="mission-row">
-            <BookOpen size={18} />
-            <span>Licoes</span>
-            <strong>{dailyGoals.lessons}/12</strong>
-          </div>
-          <div className="mission-row">
-            <Layers3 size={18} />
-            <span>Cartoes</span>
-            <strong>{dailyGoals.cards}</strong>
-          </div>
-          <div className="mission-row">
-            <Mic size={18} />
-            <span>Fala</span>
-            <strong>{dailyGoals.speaking}</strong>
-          </div>
-          <div className="mission-row">
-            <Brush size={18} />
-            <span>Hanzi</span>
-            <strong>{dailyGoals.writing}</strong>
-          </div>
-        </div>
-      </section>
+  const phaseHanzi = ['池', '河', '瀑', '門']
 
-      <section className="lesson-tree-panel" aria-label="Trilha do Carpa-Dragao">
-        <div className="tree-canopy">
-          <p className="eyebrow">Lenda do Carpa-Dragao</p>
-          <h2>Suba o rio fase a fase ate saltar o Portao do Dragao.</h2>
-        </div>
-        <div className="tree-trunk">
-          {units.map((unit, unitIndex) => (
-            <div className={`tree-stage ${unit.accent}`} key={unit.id}>
-              <div className="hsk-gate">
-                <span>{unit.level}</span>
-                <strong>{unit.title}</strong>
-                <small>{unitCompletion(unit.id)}%</small>
+  return (
+    <div className="learn-grid c-screen">
+      <section className="lesson-tree-panel c-trilha" aria-label="Trilha do Carpa-Dragao">
+        {units.map((unit, unitIndex) => {
+          const pct = unitCompletion(unit.id)
+          return (
+            <div className="c-fase" key={unit.id}>
+              <div className="c-fase-heading">
+                <div className={`c-fase-hanzi ${unit.accent}`}>{phaseHanzi[unitIndex] ?? '本'}</div>
+                <div>
+                  <p>Fase {unitIndex + 1}</p>
+                  <h2>{unit.title}</h2>
+                </div>
+                <strong>{pct}%</strong>
               </div>
-              <div className="tree-branch">
-                {unit.lessonIds.map((lessonId, lessonIndex) => {
+              <div className="c-node-list">
+                {unit.lessonIds.map((lessonId) => {
                   const lesson = lessons.find((item) => item.id === lessonId)
                   if (!lesson) return null
                   const completed = progress.completedLessons.includes(lesson.id)
+                  const active = selectedLessonId === lesson.id
                   return (
                     <button
                       className={[
-                        'tree-node',
-                        selectedLessonId === lesson.id ? 'active' : '',
-                        completed ? 'complete' : '',
+                        'c-node',
+                        active ? 'active' : '',
+                        completed ? 'done' : '',
+                        !active && !completed ? 'locked' : '',
                       ].filter(Boolean).join(' ')}
                       key={lesson.id}
                       type="button"
                       onClick={() => onSelectLesson(lesson.id)}
-                      style={{
-                        '--branch-x': `${lessonIndex === 1 ? 0 : lessonIndex === 0 ? -58 : 58}px`,
-                        '--branch-y': `${lessonIndex * 12}px`,
-                        '--stage-delay': `${unitIndex * 0.04}s`,
-                      } as React.CSSProperties}
                     >
-                      <span className="tree-node-icon">
-                        {completed ? <CheckCircle2 size={22} /> : <GraduationCap size={22} />}
+                      {active && <span className="c-now">Agora</span>}
+                      <span className="c-node-icon">
+                        {completed ? <CheckCircle2 size={18} /> : active ? <GraduationCap size={18} /> : <LockKeyhole size={16} />}
                       </span>
-                      <span>{lesson.title}</span>
-                      <small>{lesson.xp} XP</small>
+                      <span className="c-node-copy">
+                        <strong>{lesson.title}</strong>
+                        <small>+{lesson.xp} XP</small>
+                      </span>
                     </button>
                   )
                 })}
               </div>
             </div>
-          ))}
-          <div className="hsk-gate next">
-            <span>Proximo portal</span>
-            <strong>Tornar-se Dragao</strong>
-            <small>HSK 1 libera ao completar todas as fases</small>
-          </div>
+          )
+        })}
+        <div className="c-dragon-gate">
+          <span>龍</span>
+          <strong>Portao do Dragao</strong>
+          <small>HSK 1 libera ao completar todas as fases</small>
         </div>
       </section>
     </div>
@@ -1937,19 +1935,28 @@ function ChunksView({
   const [index, setIndex] = useState(0)
   const [stage, setStage] = useState<'study' | 'gap' | 'feedback'>('study')
   const [answer, setAnswer] = useState('')
+  const [isDropReady, setIsDropReady] = useState(false)
   const [lastCorrect, setLastCorrect] = useState(false)
 
   const chunk = chunks[index % chunks.length]
+  const chunkOptions = useMemo(() => chunkBlockOptions(chunk), [chunk])
+  const [blankBefore, blankAfter] = splitChunkBlank(chunk.blank)
   const openChunkMistakes = progress.mistakes.filter((mistake) => !mistake.resolvedAt && mistake.type === 'chunk').length
 
   function next() {
     setStage('study')
     setAnswer('')
+    setIsDropReady(false)
     setIndex((current) => (current + 1) % chunks.length)
   }
 
-  function check(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  function placeBlock(block: string) {
+    setAnswer(block)
+    setIsDropReady(false)
+  }
+
+  function check() {
+    if (!answer) return
     const correct = normalizeAnswer(answer) === normalizeAnswer(chunk.blankAnswer)
     setLastCorrect(correct)
     onChunkResult(chunk, correct, answer)
@@ -1988,24 +1995,46 @@ function ChunksView({
         )}
 
         {stage === 'gap' && (
-          <form className="chunk-card" onSubmit={check}>
+          <div className="chunk-card chunk-builder-card">
             <p className="eyebrow">Complete o bloco</p>
-            <strong>{chunk.blank}</strong>
-            <span>{chunk.pinyin}</span>
-            <p>{chunk.portuguese}</p>
-            <label>
-              Resposta
-              <input
-                autoFocus
-                value={answer}
-                onChange={(event) => setAnswer(event.target.value)}
-                placeholder="digite o que falta"
-              />
-            </label>
-            <button className="primary-action" type="submit">
+            <div
+              className={isDropReady ? 'chunk-drop-zone ready' : answer ? 'chunk-drop-zone filled' : 'chunk-drop-zone'}
+              onDragOver={(event) => {
+                event.preventDefault()
+                setIsDropReady(true)
+              }}
+              onDragLeave={() => setIsDropReady(false)}
+              onDrop={(event) => {
+                event.preventDefault()
+                const block = event.dataTransfer.getData('text/plain')
+                if (block) placeBlock(block)
+              }}
+            >
+              <span>{blankBefore}</span>
+              <button className="chunk-slot" type="button" onClick={() => setAnswer('')}>
+                {answer || '___'}
+              </button>
+              <span>{blankAfter}</span>
+            </div>
+            <p className="chunk-context">{chunk.portuguese}</p>
+            <div className="chunk-option-bank" aria-label="Opcoes de blocos">
+              {chunkOptions.map((option) => (
+                <button
+                  className={answer === option ? 'chunk-option used' : 'chunk-option'}
+                  draggable
+                  key={option}
+                  type="button"
+                  onClick={() => placeBlock(option)}
+                  onDragStart={(event) => event.dataTransfer.setData('text/plain', option)}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            <button className="primary-action" type="button" disabled={!answer} onClick={check}>
               <CheckCircle2 size={18} /> Conferir
             </button>
-          </form>
+          </div>
         )}
 
         {stage === 'feedback' && (
@@ -2044,16 +2073,33 @@ function ChunksView({
               }}
             >
               <div>
-                <strong>{item.hanzi}</strong>
-                <span>{item.pinyin}</span>
+                <strong>Bloco {itemIndex + 1}</strong>
+                <span>{units.find((unit) => unit.id === item.unitId)?.title ?? 'Trilha'}</span>
               </div>
-              <small>{item.portuguese}</small>
+              <small>{itemIndex === index ? 'Atual' : 'Escolher'}</small>
             </button>
           ))}
         </div>
       </aside>
     </div>
   )
+}
+
+function splitChunkBlank(blank: string) {
+  const [before = '', after = ''] = blank.split('___')
+  return [before, after]
+}
+
+function chunkBlockOptions(active: Chunk) {
+  const distractors = chunks
+    .map((chunk) => chunk.blankAnswer)
+    .filter((block, index, all) => block !== active.blankAnswer && all.indexOf(block) === index)
+    .sort((left, right) => optionRank(active.id, left) - optionRank(active.id, right))
+    .slice(0, 3)
+
+  return [active.blankAnswer, ...distractors]
+    .filter((block, index, all) => all.indexOf(block) === index)
+    .sort((left, right) => optionRank(`${active.id}-blocks`, left) - optionRank(`${active.id}-blocks`, right))
 }
 
 function SpeakView({
@@ -2439,18 +2485,17 @@ function validateWritingAttempt(
     return { ok: false, message: `Meta: ${character.strokes} tracos principais.` }
   }
 
-  // Tighter stroke count: 0 tolerance for short chars, 1 for medium, 2 only for very complex.
-  const strokeTolerance = character.strokes >= 8 ? 2 : character.strokes >= 5 ? 1 : 0
-  if (Math.abs(strokesDrawn - character.strokes) > strokeTolerance) {
+  const minimumUsefulStrokes = Math.max(1, Math.floor(character.strokes * 0.45))
+  if (strokesDrawn < minimumUsefulStrokes) {
     return {
       ok: false,
-      message: `Voce fez ${strokesDrawn} traco(s) — esse hanzi tem ${character.strokes}. Refaca contando cada movimento.`,
+      message: `Faltam movimentos principais. Faca pelo menos ${minimumUsefulStrokes} traco(s) claros.`,
     }
   }
 
   const points = strokes.flat()
-  if (points.length < Math.max(12, character.strokes * 6)) {
-    return { ok: false, message: 'Trace os movimentos completos antes de validar — esta muito curto.' }
+  if (points.length < Math.max(8, character.strokes * 3)) {
+    return { ok: false, message: 'Trace um pouco mais antes de validar.' }
   }
 
   const bounds = getPointBounds(points)
@@ -2459,20 +2504,19 @@ function validateWritingAttempt(
   const pathLength = strokes.reduce((total, stroke) => total + getPathLength(stroke), 0)
   const template = writingValidationTemplates[character.id] ?? {
     cells: ['1-0', '0-1', '1-1', '2-1', '1-2'],
-    minWidthRatio: 0.42,
-    minHeightRatio: 0.46,
+    minWidthRatio: 0.34,
+    minHeightRatio: 0.36,
     minPathLength: WRITING_MIN_PATH,
   }
 
-  if (widthRatio < template.minWidthRatio || heightRatio < template.minHeightRatio) {
+  if (widthRatio < template.minWidthRatio * 0.68 || heightRatio < template.minHeightRatio * 0.68) {
     return { ok: false, message: 'A forma ficou pequena ou concentrada. Use mais espaco do grid do hanzi.' }
   }
 
-  if (pathLength < template.minPathLength) {
-    return { ok: false, message: 'O caminho ficou curto demais. Trace as linhas inteiras do caractere.' }
+  if (pathLength < template.minPathLength * 0.55) {
+    return { ok: false, message: 'O caminho ficou curto demais. Complete mais o caractere.' }
   }
 
-  // Cell coverage with a finer 4x4 grid for stricter shape match.
   const touchedFineCells = new Set(
     points.map((point) => {
       const col = Math.min(3, Math.max(0, Math.floor((point.x / Math.max(1, canvasSize.width)) * 4)))
@@ -2480,11 +2524,10 @@ function validateWritingAttempt(
       return `${col}-${row}`
     }),
   )
-  if (touchedFineCells.size < Math.max(6, character.strokes + 2)) {
+  if (touchedFineCells.size < Math.max(3, Math.ceil(character.strokes * 0.45))) {
     return { ok: false, message: 'A forma cobriu poucas areas do hanzi. Espalhe o traco seguindo a sombra.' }
   }
 
-  // Original 3x3 template check, now stricter (75% required).
   const touchedCells = new Set(
     points.map((point) => {
       const col = Math.min(2, Math.max(0, Math.floor((point.x / Math.max(1, canvasSize.width)) * 3)))
@@ -2493,24 +2536,10 @@ function validateWritingAttempt(
     }),
   )
   const hitCells = template.cells.filter((cell) => touchedCells.has(cell)).length
-  const neededCells = Math.max(3, Math.ceil(template.cells.length * 0.75))
+  const neededCells = Math.max(2, Math.ceil(template.cells.length * 0.45))
 
   if (hitCells < neededCells) {
     return { ok: false, message: 'A forma nao bateu com a estrutura do hanzi. Siga a sombra como guia.' }
-  }
-
-  // Structural directional check: require strokes that go horizontal AND vertical.
-  let hasHorizontal = false
-  let hasVertical = false
-  strokes.forEach((stroke) => {
-    if (stroke.length < 2) return
-    const sBounds = getPointBounds(stroke)
-    if (sBounds.width > canvasSize.width * 0.18 && sBounds.height < canvasSize.height * 0.12) hasHorizontal = true
-    if (sBounds.height > canvasSize.height * 0.22 && sBounds.width < canvasSize.width * 0.18) hasVertical = true
-  })
-  // Most hanzi require at least one strong horizontal or vertical stroke.
-  if (character.strokes >= 3 && !hasHorizontal && !hasVertical) {
-    return { ok: false, message: 'Os tracos parecem soltos demais. Esse hanzi exige linhas retas claras.' }
   }
 
   return { ok: true, message: 'Hanzi validado.' }
@@ -2761,18 +2790,41 @@ function ClipsView({
   onThemeChange: (value: string) => void
   onSpeak: (text: string) => void
 }) {
+  const heroMoment = studyMoments[0]
+  const moreMoments = studyMoments.slice(1)
+
   return (
-    <div className="clips-layout">
-      <section className="study-moments">
-        <div className="clip-library-header">
-          <div>
-            <p className="eyebrow">Aba estudar</p>
-            <h2>Memes, musicas e cultura para fixar frases.</h2>
-          </div>
-          <Target size={26} />
+    <div className="clips-layout c-screen c-cultura">
+      <section className="study-moments c-culture-feed">
+        <div className="c-chip-row" aria-label="Filtros de cultura">
+          {['Tudo', 'Memes', 'Musica', 'Historico', 'Viral'].map((item, index) => (
+            <span className={index === 0 ? 'active' : ''} key={item}>{item}</span>
+          ))}
         </div>
-        <div className="study-moment-grid">
-          {studyMoments.map((moment) => (
+
+        {heroMoment && (
+          <article className="c-culture-hero">
+            <div className="c-culture-watermark">笑</div>
+            <div className="c-hero-tags">
+              <span>{heroMoment.source}</span>
+              <small>{heroMoment.level}</small>
+            </div>
+            <h2>{heroMoment.title}</h2>
+            <button type="button" onClick={() => onSpeak(heroMoment.phrase)} title="Ouvir momento">
+              <strong>{heroMoment.phrase}</strong>
+              <span>{heroMoment.pinyin}</span>
+              <em>{heroMoment.meaning}</em>
+            </button>
+            <p>{heroMoment.note}</p>
+            <a href={heroMoment.searchUrl} target="_blank" rel="noreferrer">
+              Abrir referencia
+            </a>
+          </article>
+        )}
+
+        <p className="c-section-label">Mais momentos</p>
+        <div className="c-moment-list">
+          {moreMoments.map((moment) => (
             <StudyMomentCard key={moment.id} moment={moment} onSpeak={onSpeak} />
           ))}
         </div>

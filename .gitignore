@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+*.apk
+design-source/
+redtailtestedesign.zip
 android/local.properties
 android/.gradle
 android/build
