@@ -71,6 +71,7 @@ import {
 import { checkInactivity, getStageAccessories, onLessonComplete, onCardReview } from './mascot'
 import { MascotWidget } from './MascotWidget'
 import { playCorrect, playLevelUp, playWrong, unlockAudioOnFirstGesture } from './sound'
+import { useFocusMode } from './focusMode'
 import {
   CLAN_MAX_MEMBERS,
   clanXpBonus,
@@ -1859,6 +1860,7 @@ function LearnView({
   onSpeak: (text: string) => void
   onAdvanceNow: () => void
 }) {
+  useFocusMode(isLessonActive)
   const isCorrect = quizChoice === phrase.portuguese
   const activeUnit = unitById.get(selectedLesson.unitId) ?? units[0]
   const currentTabLabel = `${activeUnit.level} / ${stepIndex + 1} de ${stepTotal}`
@@ -2378,6 +2380,8 @@ function ChunksView({
   const [isDropReady, setIsDropReady] = useState(false)
   const [lastCorrect, setLastCorrect] = useState(false)
 
+  useFocusMode(stage !== 'study')
+
   const chunk = chunks[index % chunks.length]
   const chunkOptions = useMemo(() => chunkBlockOptions(chunk), [chunk])
   const [blankBefore, blankAfter] = splitChunkBlank(chunk.blank)
@@ -2572,6 +2576,7 @@ function SpeakView({
   const shadowPhrase = '我要一杯水'
   const isListening = micState === 'listening' || micState === 'starting'
   const isBusy = isListening || micState === 'processing'
+  useFocusMode(isBusy)
   const showFeedback = micState === 'success' || micState === 'fail' || micState === 'error'
 
   const micLabel = (() => {
@@ -2709,6 +2714,8 @@ function WritingView({
   const [canvasSize, setCanvasSize] = useState({ width: 430, height: 430 })
   const [validationMessage, setValidationMessage] = useState('')
   const [practiceDone, setPracticeDone] = useState(false)
+
+  useFocusMode(strokesDrawn > 0 && !practiceDone)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const isDrawing = useRef(false)
   const activeStroke = useRef<DrawPoint[]>([])

@@ -5014,3 +5014,22 @@ body,
     grid-template-columns: 1fr;
   }
 }
+
+/* === v0.2.7: focus mode (lesson/chunk/writing/speech in progress) === */
+
+body.focus-mode .bottom-nav,
+body.focus-mode .side-nav,
+body.focus-mode .directionc-utility {
+  display: none !important;
+}
+
+body.focus-mode .workspace {
+  max-width: 100%;
+  padding-bottom: 24px;
+}
+
+@media (max-width: 1080px) {
+  body.focus-mode .workspace {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+}
