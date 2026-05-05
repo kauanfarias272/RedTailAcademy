@@ -170,6 +170,56 @@ const practiceModes: Array<{ id: PracticeMode; label: string; icon: typeof Layer
   { id: 'write', label: 'Escrita', icon: Brush },
 ]
 
+const phraseConnectionMap: Record<string, string[]> = {
+  'ni-hao': ['好 volta em 很好, 早上好 e 好吃', '你好 vira pergunta com 吗: 你好吗'],
+  'wo-hen-hao': ['我 + estado tambem aparece em 我累了', '很好 reaproveita o mesmo 好 de 你好'],
+  'ma-tones': ['妈 conecta com 妈妈', '吗 usa som leve para transformar frase em pergunta'],
+  'shi-tones': ['十 reaparece em 十点', '是 e 事 treinam mesmo som com tons diferentes'],
+  'zhong-guo': ['中 volta em 中文 e 中国人', '国 aparece em nomes de paises'],
+  ren: ['人 entra em 中国人', 'O radical pessoa aparece em 你'],
+  'ba-ba': ['爸爸 e 妈妈 usam repeticao com segunda silaba leve', 'Treina final -a antes de frases de familia'],
+  'ma-ma': ['妈妈 conecta com 妈 dos quatro tons', 'Mesmo padrao de palavra familiar de 爸爸'],
+  'zao-shang-hao': ['好 conecta com 你好 e 很好', '早上 marca tempo antes da saudacao'],
+  'zai-jian': ['再 marca repeticao: ver de novo', '见 volta em encontros e despedidas'],
+  'xie-xie': ['谢谢你 usa o alvo depois do agradecimento', 'A segunda silaba fica neutra como em 朋友'],
+  'mei-guan-xi': ['没 nega situacoes: 没问题 e 没关系', 'Serve como resposta natural para 对不起'],
+  'ni-hao-ma': ['吗 e o bloco que transforma afirmacao em pergunta', 'Reaproveita 你好 sem mudar a base'],
+  'shen-me': ['什么 combina com objetos: 这是什么', 'Perguntas curtas reaparecem em 哪里'],
+  'qing-wen': ['请问 prepara perguntas educadas', 'Use antes de 厕所在哪里'],
+  'ce-suo-zai-na-li': ['在哪里 troca o lugar: 学校在哪里', '请问 + pergunta deixa a frase mais educada'],
+  'yi-er-san': ['三 reaparece em 三点', '一 muda de tom em 一杯水'],
+  shi: ['十 entra em 十点', 'Conecta numeros com horario'],
+  'duo-shao-qian': ['多少 serve para quantidade e preco', '钱 fecha perguntas de compra'],
+  'zhe-ge': ['这个 entra em 我要这个', '个 e classificador geral para itens'],
+  'wo-yao': ['我要 + item cria pedido direto', '想 suaviza o desejo em 我想休息'],
+  'yi-bei-shui': ['一杯 conecta numero + classificador', '水 volta em 喝水'],
+  'san-dian': ['点 marca horas', '三 vem da contagem 1-10'],
+  'ming-tian-shi-dian': ['明天 ja apareceu na fase de tempo', '十点 combina numero + horario'],
+  'wo-de-jia': ['我的 cria posse: meu/minha', '家 pode ser casa ou familia'],
+  'peng-you': ['朋友 usa segunda silaba neutra', 'Pode virar 我的朋友'],
+  'chi-fan': ['吃 + comida volta em 吃面', '饭 aqui funciona como refeicao, nao so arroz'],
+  'he-shui': ['喝 + bebida volta em 喝咖啡', '水 conecta com 一杯水'],
+  'jin-tian': ['今天 marca tempo antes da frase', 'Combina com 天气好'],
+  'ming-tian': ['明天 conecta com 明天十点', 'Tempo vem antes do horario'],
+  'wo-lei-le': ['了 marca mudanca de estado', '我 + estado conecta com 我很好'],
+  'wo-xiang-xiu-xi': ['想 + verbo suaviza desejo', 'Mesmo 想 de 我想喝咖啡'],
+}
+
+const chunkConnectionMap: Record<string, string[]> = {
+  'chunk-meu-nome': ['我叫 troca o final pelo seu nome', 'Conecta apresentacao com 我 + verbo'],
+  'chunk-tudo-bem': ['你好吗 reaproveita 你好', '吗 fecha pergunta sim/nao'],
+  'chunk-obrigado': ['谢谢 + alvo', '你 tambem aparece em 你好'],
+  'chunk-quanto-custa': ['多少 + 钱 cria preco', '这个 aponta o item'],
+  'chunk-quero-isto': ['我要 conecta pedido direto com 这个', 'Use 想 para suavizar'],
+  'chunk-cafe': ['想 + verbo + objeto', '喝 conecta bebidas: 水, 咖啡'],
+  'chunk-vou-parque': ['去 + lugar', 'Troque 公园 por qualquer destino'],
+  'chunk-tempo': ['今天 marca quando', '天气好 reaproveita 好'],
+  'chunk-gosto-comer': ['喜欢 + verbo', '吃 conecta comida e rotina'],
+  'chunk-que-horas': ['现在 marca agora', '几点 reaparece em horarios'],
+  'chunk-banheiro': ['请问 + pergunta educada', '在哪里 troca o lugar sem mudar a estrutura'],
+  'chunk-descansar': ['想 + verbo reaparece em 我想喝咖啡', '休息 conecta com energia/cansaco'],
+}
+
 function App() {
   const [user, setUser] = useState<User | null>(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
@@ -549,7 +599,7 @@ function App() {
         recordMistake(current, {
           type: 'lesson',
           itemId: quizPhrase.id,
-          prompt: `${quizPhrase.hanzi} - ${quizPhrase.pinyin}`,
+          prompt: quizPhrase.hanzi,
           expected: quizPhrase.portuguese,
           answer: choice,
           helper: quizPhrase.note,
@@ -604,7 +654,7 @@ function App() {
           ? recordMistake(baseProgress, {
               type: 'card',
               itemId: activeCard.id,
-              prompt: `${activeCard.hanzi} - ${activeCard.pinyin}`,
+              prompt: activeCard.hanzi,
               expected: activeCard.portuguese,
               answer: 'Marcou como dificil',
               helper: activeCard.note,
@@ -801,7 +851,7 @@ function App() {
         return recordMistake(current, {
           type: 'chunk',
           itemId: chunk.id,
-          prompt: `${chunk.hanzi} - ${chunk.pinyin}`,
+          prompt: chunk.hanzi,
           expected: chunk.blankAnswer,
           answer: answer || 'Resposta vazia',
           helper: chunk.note,
@@ -1524,6 +1574,75 @@ function Stat({
   )
 }
 
+function RevealStudyTabs({
+  pronunciation,
+  literal,
+  literalNote,
+  compact = false,
+}: {
+  pronunciation?: string
+  literal?: string
+  literalNote?: string
+  compact?: boolean
+}) {
+  const [active, setActive] = useState<'pronunciation' | 'literal' | null>(null)
+  const hasPronunciation = Boolean(pronunciation)
+  const hasLiteral = Boolean(literal)
+
+  if (!hasPronunciation && !hasLiteral) return null
+
+  const toggle = (next: 'pronunciation' | 'literal') => {
+    setActive((current) => (current === next ? null : next))
+  }
+
+  return (
+    <div className={compact ? 'reveal-study-tabs compact' : 'reveal-study-tabs'}>
+      <div className="reveal-tab-row" role="tablist" aria-label="Detalhes opcionais">
+        {hasPronunciation && (
+          <button
+            className={active === 'pronunciation' ? 'reveal-tab active' : 'reveal-tab'}
+            type="button"
+            onClick={() => toggle('pronunciation')}
+            aria-expanded={active === 'pronunciation'}
+          >
+            {active === 'pronunciation' ? 'Ocultar pronuncia' : 'Mostrar pronuncia'}
+          </button>
+        )}
+        {hasLiteral && (
+          <button
+            className={active === 'literal' ? 'reveal-tab active' : 'reveal-tab'}
+            type="button"
+            onClick={() => toggle('literal')}
+            aria-expanded={active === 'literal'}
+          >
+            {active === 'literal' ? 'Ocultar literal' : 'Mostrar literal'}
+          </button>
+        )}
+      </div>
+      {active && (
+        <div className="reveal-tab-panel" role="region">
+          <span>{active === 'pronunciation' ? 'Pronuncia' : 'Literal'}</span>
+          <strong>{active === 'pronunciation' ? pronunciation : literal}</strong>
+          {active === 'literal' && literalNote ? <small>{literalNote}</small> : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ConnectionChips({ items }: { items?: string[] }) {
+  if (!items?.length) return null
+
+  return (
+    <div className="connection-chips" aria-label="Conexoes de estudo">
+      <span>Conexoes</span>
+      {items.map((item) => (
+        <small key={item}>{item}</small>
+      ))}
+    </div>
+  )
+}
+
 function LearnView({
   selectedLesson,
   selectedLessonId,
@@ -1599,10 +1718,15 @@ function LearnView({
             </button>
             <div>
               <strong>{phrase.hanzi}</strong>
-              <span>{phrase.pinyin}</span>
-              <p>{phrase.literal}</p>
+              <RevealStudyTabs
+                key={phrase.id}
+                pronunciation={phrase.pinyin}
+                literal={phrase.literal}
+                literalNote={phrase.note}
+              />
             </div>
           </div>
+          <ConnectionChips items={phraseConnectionMap[phrase.id]} />
 
           <div className="quiz-block">
             <p className="eyebrow">Escolha a traducao</p>
@@ -1859,9 +1983,16 @@ function CardsView({
 
         <button className={flipped ? 'flashcard flipped' : 'flashcard'} type="button" onClick={onFlip}>
           <span>{flipped ? activeCard.portuguese : activeCard.hanzi}</span>
-          <strong>{flipped ? activeCard.note : activeCard.pinyin}</strong>
-          <small>{flipped ? activeCard.literal : activeCard.lessonTitle}</small>
+          <strong>{flipped ? activeCard.note : activeCard.lessonTitle}</strong>
+          <small>{flipped ? 'Abra pronuncia/literal so se precisar.' : 'Toque para testar significado sem cola.'}</small>
         </button>
+        <RevealStudyTabs
+          key={activeCard.id}
+          pronunciation={activeCard.pinyin}
+          literal={activeCard.literal}
+          literalNote={activeCard.note}
+        />
+        <ConnectionChips items={phraseConnectionMap[activeCard.id]} />
 
         <div className="review-actions">
           <button type="button" onClick={() => onReview('hard')}>
@@ -1892,7 +2023,7 @@ function CardsView({
               <article className="deck-item" key={phrase.id}>
                 <div>
                   <strong>{phrase.hanzi}</strong>
-                  <span>{phrase.pinyin}</span>
+                  <span>{phrase.lessonTitle}</span>
                 </div>
                 <small>{card ? `Caixa ${card.box}` : 'Novo'}</small>
               </article>
@@ -2146,9 +2277,14 @@ function ChunksView({
                 : `Errado. Resposta: ${chunk.blankAnswer}. Esse chunk vai pra aba Erros.`}
             </p>
             <strong>{chunk.hanzi}</strong>
-            <span>{chunk.pinyin}</span>
             <p>{chunk.portuguese}</p>
-            <small>{chunk.gloss}</small>
+            <RevealStudyTabs
+              key={chunk.id}
+              pronunciation={chunk.pinyin}
+              literal={chunk.gloss}
+              literalNote={chunk.note}
+            />
+            <ConnectionChips items={chunkConnectionMap[chunk.id]} />
             <em>{chunk.note}</em>
             <button className="primary-action" type="button" onClick={next}>
               Proximo bloco <ChevronRight size={18} />
@@ -2262,7 +2398,7 @@ function SpeakView({
             <article className="tone-card" key={drill.id}>
               <div>
                 <strong>{drill.hanzi}</strong>
-                <span>{drill.pinyin}</span>
+                <RevealStudyTabs pronunciation={drill.pinyin} compact={true} />
                 <small>{drill.focus}</small>
               </div>
               <div className="tone-card-actions">
@@ -2546,16 +2682,15 @@ function WritingView({
               }}
             >
               <strong>{character.character}</strong>
-              <span>{character.pinyin}</span>
+              <span>{character.meaning}</span>
             </button>
           ))}
         </div>
 
         <article className="stroke-card">
           <p className="eyebrow">{selectedCharacter.meaning}</p>
-          <h2>
-            {selectedCharacter.character} <span>{selectedCharacter.pinyin}</span>
-          </h2>
+          <h2>{selectedCharacter.character}</h2>
+          <RevealStudyTabs key={selectedCharacter.id} pronunciation={selectedCharacter.pinyin} compact={true} />
           <div className="stroke-meta">
             <span>{selectedCharacter.strokes} tracos</span>
             <span>radical {selectedCharacter.radical}</span>
@@ -2924,9 +3059,14 @@ function ClipsView({
             <h2>{heroMoment.title}</h2>
             <button type="button" onClick={() => onSpeak(heroMoment.phrase)} title="Ouvir momento">
               <strong>{heroMoment.phrase}</strong>
-              <span>{heroMoment.pinyin}</span>
-              <em>{heroMoment.meaning}</em>
+              <em>Ouvir antes de revelar</em>
             </button>
+            <RevealStudyTabs
+              pronunciation={heroMoment.pinyin}
+              literal={heroMoment.meaning}
+              literalNote={heroMoment.note}
+              compact={true}
+            />
             <p>{heroMoment.note}</p>
             <a href={heroMoment.searchUrl} target="_blank" rel="noreferrer">
               Abrir referencia
@@ -3005,9 +3145,9 @@ function StudyMomentCard({ moment, onSpeak }: { moment: StudyMoment; onSpeak: (t
       <strong>{moment.title}</strong>
       <button className="study-phrase" type="button" onClick={() => onSpeak(moment.phrase)} title="Ouvir frase">
         <span>{moment.phrase}</span>
-        <small>{moment.pinyin}</small>
+        <small>Ouvir frase</small>
       </button>
-      <p>{moment.meaning}</p>
+      <RevealStudyTabs pronunciation={moment.pinyin} literal={moment.meaning} literalNote={moment.note} compact={true} />
       <small>{moment.note}</small>
       <a href={moment.searchUrl} target="_blank" rel="noreferrer">
         Abrir referencia
