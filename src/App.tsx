@@ -36,7 +36,6 @@ import { Logo1, LogoVertical } from './components/Logos'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { auth, deleteCurrentAccount } from './firebase'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User, GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth'
-import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react'
 import './App.css'
@@ -59,7 +58,6 @@ import {
   hasOpenMistakes,
   nextDueDate,
   normalizeDailyGoals,
-  openMistakes,
   personalGoals,
   progressLevel,
   recordMistake,
@@ -138,6 +136,22 @@ const quizOptions = [
   'pai',
   'mae',
 ]
+
+const lessonById = new Map(lessons.map((lesson) => [lesson.id, lesson]))
+const lessonIndexById = new Map(lessons.map((lesson, index) => [lesson.id, index]))
+const unitById = new Map(units.map((unit) => [unit.id, unit]))
+const unitTitleById = new Map(units.map((unit) => [unit.id, unit.title]))
+const lessonsByUnit = units.reduce<Record<string, Lesson[]>>((groups, unit) => {
+  groups[unit.id] = unit.lessonIds
+    .map((lessonId) => lessonById.get(lessonId))
+    .filter((lesson): lesson is Lesson => Boolean(lesson))
+  return groups
+}, {})
+const phrasePortugueseOptions = allPhrases.map((phrase) => phrase.portuguese)
+const phraseHanziOptions = allPhrases.map((phrase) => phrase.hanzi)
+const allAnswerOptions = Array.from(new Set([...phrasePortugueseOptions, ...quizOptions]))
+const chunkBlankAnswers = chunks.map((chunk) => chunk.blankAnswer)
+const writingStructureOptions = writingCharacters.map((character) => `${character.strokes} tracos com estrutura de ${character.character}`)
 
 const FREEZE_COST = 80
 const MASCOT_SWITCH_COST = 300
@@ -488,29 +502,30 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today])
 
-  const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) ?? lessons[0]
-  const unresolvedMistakes = openMistakes(progress)
+  const selectedLesson = useMemo(() => lessonById.get(selectedLessonId) ?? lessons[0], [selectedLessonId])
+  const unresolvedMistakes = useMemo(() => progress.mistakes.filter((mistake) => !mistake.resolvedAt), [progress.mistakes])
   const userLevel = progressLevel(progress.xp)
   const completedCount = progress.completedLessons.length
-  const dueCards = allPhrases.filter((phrase) => {
-    const card = progress.cards[phrase.id]
-    return !card || card.dueAt <= now
-  })
+  const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
+  const dueCards = useMemo(
+    () => allPhrases.filter((phrase) => {
+      const card = progress.cards[phrase.id]
+      return !card || card.dueAt <= now
+    }),
+    [now, progress.cards],
+  )
   const activeCard = dueCards[0] ?? allPhrases[0]
-  const totalMinutes = lessons.reduce((total, lesson) => {
-    return progress.completedLessons.includes(lesson.id) ? total + lesson.minutes : total
-  }, 0)
+  const totalMinutes = useMemo(
+    () => lessons.reduce((total, lesson) => completedLessonSet.has(lesson.id) ? total + lesson.minutes : total, 0),
+    [completedLessonSet],
+  )
   const levelProgress = Math.round((completedCount / lessons.length) * 100)
-  const currentUnit = units.find((unit) => unit.id === selectedLesson.unitId) ?? units[0]
+  const currentUnit = unitById.get(selectedLesson.unitId) ?? units[0]
 
   const quizPhrase = selectedLesson.phrases[lessonStep] ?? selectedLesson.phrases[0]
   const options = useMemo(() => {
-    const answerPool = Array.from(new Set([
-      ...allPhrases.map((item) => item.portuguese),
-      ...quizOptions,
-    ]))
     const distractors = quizOptions
-      .concat(answerPool)
+      .concat(allAnswerOptions)
       .filter((option, index, list) => option && option !== quizPhrase.portuguese && list.indexOf(option) === index)
       .sort((left, right) => optionRank(`${selectedLesson.id}-${quizPhrase.id}`, left) - optionRank(`${selectedLesson.id}-${quizPhrase.id}`, right))
       .slice(0, 3)
@@ -1104,6 +1119,7 @@ function App() {
               // would bounce to localhost and break.
               if (Capacitor.isNativePlatform()) {
                 try {
+                  const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication')
                   const result = await FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true })
                   const idToken = result.credential?.idToken ?? null
                   const accessToken = result.credential?.accessToken ?? null
@@ -1594,7 +1610,7 @@ function optionRank(seed: string, value: string) {
 }
 
 function getNextLessonId(currentLessonId: string) {
-  const index = lessons.findIndex((lesson) => lesson.id === currentLessonId)
+  const index = lessonIndexById.get(currentLessonId) ?? -1
   return lessons[index + 1]?.id ?? ''
 }
 
@@ -1607,7 +1623,7 @@ function firstPlayableLessonId(progress: Pick<LearningProgress, 'completedLesson
 }
 
 function lessonAccess(lessonId: string, progress: Pick<LearningProgress, 'completedLessons' | 'lessonReviews'>, timestamp: number) {
-  const index = lessons.findIndex((lesson) => lesson.id === lessonId)
+  const index = lessonIndexById.get(lessonId) ?? -1
   const completed = progress.completedLessons.includes(lessonId)
 
   if (index < 0) {
@@ -1695,15 +1711,15 @@ function mistakeCorrectionOptions(mistake: LearningMistake) {
   const pool = (() => {
     switch (mistake.type) {
       case 'chunk':
-        return chunks.map((chunk) => chunk.blankAnswer)
+        return chunkBlankAnswers
       case 'speech':
-        return allPhrases.map((phrase) => phrase.hanzi)
+        return phraseHanziOptions
       case 'writing':
-        return writingCharacters.map((character) => `${character.strokes} tracos com estrutura de ${character.character}`)
+        return writingStructureOptions
       case 'card':
       case 'lesson':
       default:
-        return allPhrases.map((phrase) => phrase.portuguese)
+        return phrasePortugueseOptions
     }
   })()
 
@@ -1844,15 +1860,14 @@ function LearnView({
   onAdvanceNow: () => void
 }) {
   const isCorrect = quizChoice === phrase.portuguese
-  const activeUnit = units.find((unit) => unit.id === selectedLesson.unitId) ?? units[0]
+  const activeUnit = unitById.get(selectedLesson.unitId) ?? units[0]
   const currentTabLabel = `${activeUnit.level} / ${stepIndex + 1} de ${stepTotal}`
-  const unitDone = lessons
-    .filter((lesson) => lesson.unitId === activeUnit.id)
-    .filter((lesson) => progress.completedLessons.includes(lesson.id)).length
+  const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
+  const unitDone = (lessonsByUnit[activeUnit.id] ?? []).filter((lesson) => completedLessonSet.has(lesson.id)).length
   const unitCompletion = (unitId: string) => {
-    const unitLessons = lessons.filter((lesson) => lesson.unitId === unitId)
-    const done = unitLessons.filter((lesson) => progress.completedLessons.includes(lesson.id)).length
-    return Math.round((done / unitLessons.length) * 100)
+    const unitLessons = lessonsByUnit[unitId] ?? []
+    const done = unitLessons.filter((lesson) => completedLessonSet.has(lesson.id)).length
+    return unitLessons.length ? Math.round((done / unitLessons.length) * 100) : 0
   }
 
   if (isLessonActive) {
@@ -1994,9 +2009,9 @@ function LearnView({
               </div>
               <div className="c-node-list">
                 {unit.lessonIds.map((lessonId) => {
-                  const lesson = lessons.find((item) => item.id === lessonId)
+                  const lesson = lessonById.get(lessonId)
                   if (!lesson) return null
-                  const completed = progress.completedLessons.includes(lesson.id)
+                  const completed = completedLessonSet.has(lesson.id)
                   const access = lessonAccess(lesson.id, progress, currentTime)
                   const active = selectedLessonId === lesson.id
                   const locked = access.kind === 'locked'
@@ -2166,7 +2181,22 @@ function CardsView({
   onReview: (difficulty: Difficulty) => void
   onSpeak: (text: string) => void
 }) {
-  const reviewed = Object.values(progress.cards).reduce((total, card) => total + card.reviewed, 0)
+  const reviewed = useMemo(() => Object.values(progress.cards).reduce((total, card) => total + card.reviewed, 0), [progress.cards])
+  const deckItems = useMemo(
+    () => allPhrases.map((phrase) => {
+      const card = progress.cards[phrase.id]
+      return (
+        <article className="deck-item" key={phrase.id}>
+          <div>
+            <strong>{phrase.hanzi}</strong>
+            <span>{phrase.lessonTitle}</span>
+          </div>
+          <small>{card ? `Caixa ${card.box}` : 'Novo'}</small>
+        </article>
+      )
+    }),
+    [progress.cards],
+  )
 
   return (
     <div className="cards-layout">
@@ -2217,18 +2247,7 @@ function CardsView({
           <span>{reviewed} revisoes feitas</span>
         </div>
         <div className="deck-list">
-          {allPhrases.map((phrase) => {
-            const card = progress.cards[phrase.id]
-            return (
-              <article className="deck-item" key={phrase.id}>
-                <div>
-                  <strong>{phrase.hanzi}</strong>
-                  <span>{phrase.lessonTitle}</span>
-                </div>
-                <small>{card ? `Caixa ${card.box}` : 'Novo'}</small>
-              </article>
-            )
-          })}
+          {deckItems}
         </div>
       </section>
 
@@ -2503,7 +2522,7 @@ function ChunksView({
             >
               <div>
                 <strong>Bloco {itemIndex + 1}</strong>
-                <span>{units.find((unit) => unit.id === item.unitId)?.title ?? 'Trilha'}</span>
+                <span>{unitTitleById.get(item.unitId ?? '') ?? 'Trilha'}</span>
               </div>
               <small>{itemIndex === index ? 'Atual' : 'Escolher'}</small>
             </button>
