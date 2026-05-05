@@ -1071,17 +1071,18 @@ function App() {
               // would bounce to localhost and break.
               if (Capacitor.isNativePlatform()) {
                 try {
-                  const result = await FirebaseAuthentication.signInWithGoogle()
-                  if (result.credential?.idToken) {
-                    const credential = GoogleAuthProvider.credential(result.credential.idToken)
+                  const result = await FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true })
+                  const idToken = result.credential?.idToken ?? null
+                  const accessToken = result.credential?.accessToken ?? null
+                  if (idToken || accessToken) {
+                    const credential = GoogleAuthProvider.credential(idToken, accessToken)
                     await signInWithCredential(auth, credential)
                     return
                   }
                   setAuthError('Google nao retornou token. Tente convidado abaixo.')
                   return
-                } catch (err: any) {
-                  const message = err?.message || 'erro do plugin nativo'
-                  setAuthError('Google nativo falhou: ' + message + '. Use convidado por enquanto.')
+                } catch (err) {
+                  setAuthError(googleNativeErrorMessage(err))
                   return
                 }
               }
@@ -1589,6 +1590,18 @@ function normalizeAnswer(text: string) {
     .trim()
 }
 
+function googleNativeErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || 'erro do plugin nativo')
+  const lower = message.toLowerCase()
+  const configHint = lower.includes('provider') || lower.includes('10') || lower.includes('developer') || lower.includes('configuration')
+
+  if (configHint) {
+    return 'Google nativo falhou: revise o Firebase Console, habilite Google Sign-In e troque o google-services.json por um real com SHA-1/SHA-256 do app. Erro: ' + message
+  }
+
+  return 'Google nativo falhou: ' + message + '. Use convidado por enquanto.'
+}
+
 function mistakeLabel(type: LearningMistake['type']) {
   const labels: Record<LearningMistake['type'], string> = {
     lesson: 'Licao',
@@ -1598,6 +1611,32 @@ function mistakeLabel(type: LearningMistake['type']) {
     chunk: 'Chunk',
   }
   return labels[type]
+}
+
+function mistakeCorrectionOptions(mistake: LearningMistake) {
+  const pool = (() => {
+    switch (mistake.type) {
+      case 'chunk':
+        return chunks.map((chunk) => chunk.blankAnswer)
+      case 'speech':
+        return allPhrases.map((phrase) => phrase.hanzi)
+      case 'writing':
+        return writingCharacters.map((character) => `${character.strokes} tracos com estrutura de ${character.character}`)
+      case 'card':
+      case 'lesson':
+      default:
+        return allPhrases.map((phrase) => phrase.portuguese)
+    }
+  })()
+
+  const distractors = pool
+    .filter((option, index, list) => option && normalizeAnswer(option) !== normalizeAnswer(mistake.expected) && list.indexOf(option) === index)
+    .sort((left, right) => optionRank(mistake.id, left) - optionRank(mistake.id, right))
+    .slice(0, 3)
+
+  return [mistake.expected, ...distractors]
+    .filter((option, index, list) => option && list.indexOf(option) === index)
+    .sort((left, right) => optionRank(`${mistake.id}-review`, left) - optionRank(`${mistake.id}-review`, right))
 }
 
 function Stat({
@@ -1725,6 +1764,11 @@ function LearnView({
   onAdvanceNow: () => void
 }) {
   const isCorrect = quizChoice === phrase.portuguese
+  const activeUnit = units.find((unit) => unit.id === selectedLesson.unitId) ?? units[0]
+  const currentTabLabel = `${activeUnit.level} / ${stepIndex + 1} de ${stepTotal}`
+  const unitDone = lessons
+    .filter((lesson) => lesson.unitId === activeUnit.id)
+    .filter((lesson) => progress.completedLessons.includes(lesson.id)).length
   const unitCompletion = (unitId: string) => {
     const unitLessons = lessons.filter((lesson) => lesson.unitId === unitId)
     const done = unitLessons.filter((lesson) => progress.completedLessons.includes(lesson.id)).length
@@ -1734,7 +1778,31 @@ function LearnView({
   if (isLessonActive) {
     return (
       <div className="lesson-active-layout">
-        <section className="lesson-panel">
+        <section className="lesson-tab-shell" aria-label="Licao aberta">
+          <div className="lesson-tab-strip">
+            <button className="lesson-open-tab active" type="button">
+              <BookOpen size={16} />
+              <span>{selectedLesson.title}</span>
+            </button>
+            <button className="lesson-open-tab" type="button" onClick={onCloseLesson}>
+              <Layers3 size={16} />
+              <span>Trilha</span>
+            </button>
+          </div>
+          <div className="lesson-tab-hero">
+            <div className={`lesson-tab-mark ${activeUnit.accent}`}>{phrase.hanzi.slice(0, 1)}</div>
+            <div>
+              <p className="eyebrow">{currentTabLabel}</p>
+              <h2>{selectedLesson.focus}</h2>
+              <span>{activeUnit.title} - {unitDone}/{activeUnit.lessonIds.length} licoes fechadas</span>
+            </div>
+            <button className="icon-action" type="button" onClick={onCloseLesson} title="Sair da licao">
+              <Undo2 size={18} />
+            </button>
+          </div>
+        </section>
+
+        <section className="lesson-panel lesson-panel-live">
           <div className="lesson-panel-header">
             <div>
               <p className="eyebrow">{selectedLesson.focus}</p>
@@ -2095,7 +2163,6 @@ function ErrorsView({
   onSpeak: (text: string) => void
   onGoToWriting: () => void
 }) {
-  const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [feedback, setFeedback] = useState<Record<string, string>>({})
 
   if (mistakes.length === 0) {
@@ -2115,20 +2182,13 @@ function ErrorsView({
     )
   }
 
-  function submit(mistake: LearningMistake, event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (mistake.type === 'writing') {
-      setFeedback((current) => ({ ...current, [mistake.id]: 'Esse erro sai pela aba Escrita.' }))
-      return
-    }
-    const answer = drafts[mistake.id] ?? ''
+  function chooseMistakeOption(mistake: LearningMistake, answer: string) {
     if (normalizeAnswer(answer) === normalizeAnswer(mistake.expected)) {
-      setDrafts((current) => ({ ...current, [mistake.id]: '' }))
       setFeedback((current) => ({ ...current, [mistake.id]: '' }))
       onResolve(mistake)
       return
     }
-    onMiss(mistake, answer || 'Resposta vazia')
+    onMiss(mistake, answer)
     setFeedback((current) => ({ ...current, [mistake.id]: 'Ainda nao. Veja a dica e tente outra vez.' }))
   }
 
@@ -2150,6 +2210,7 @@ function ErrorsView({
       <section className="errors-list">
         {mistakes.map((mistake) => {
           const isWriting = mistake.type === 'writing'
+          const correctionOptions = mistakeCorrectionOptions(mistake)
           return (
             <article className="mistake-card-row" key={mistake.id}>
               <div className="mistake-card-head">
@@ -2165,30 +2226,27 @@ function ErrorsView({
                   </span>
                 </div>
               </div>
-              <form className="mistake-form" onSubmit={(event) => submit(mistake, event)}>
-                <label>
-                  {isWriting ? 'Volte para Escrita e valide o caractere' : 'Resposta correta'}
-                  <input
-                    value={drafts[mistake.id] ?? ''}
-                    disabled={isWriting}
-                    onChange={(event) =>
-                      setDrafts((current) => ({ ...current, [mistake.id]: event.target.value }))
-                    }
-                    placeholder={isWriting ? mistake.expected : 'digite a resposta'}
-                  />
-                </label>
+              <div className="mistake-choice-area">
+                <span>{isWriting ? 'Marque a estrutura correta' : 'Marque a resposta certa'}</span>
+                <div className="mistake-choice-grid">
+                  {correctionOptions.map((option) => (
+                    <button
+                      className="mistake-choice"
+                      key={option}
+                      type="button"
+                      onClick={() => chooseMistakeOption(mistake, option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
                 {isWriting ? (
-                  <button className="primary-action" type="button" onClick={onGoToWriting}>
+                  <button className="primary-action mistake-writing-shortcut" type="button" onClick={onGoToWriting}>
                     <Brush size={18} />
                     Ir para Escrita
                   </button>
-                ) : (
-                  <button className="primary-action" type="submit">
-                    <CheckCircle2 size={18} />
-                    Conferir
-                  </button>
-                )}
-              </form>
+                ) : null}
+              </div>
               <p className={feedback[mistake.id] ? 'feedback error' : 'feedback'}>
                 {feedback[mistake.id] || ' '}
               </p>
