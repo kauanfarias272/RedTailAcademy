@@ -35,7 +35,7 @@ import { DirectionCHeader, DirectionCNavButton } from './components/DirectionC'
 import { Logo1, LogoVertical } from './components/Logos'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { auth, deleteCurrentAccount } from './firebase'
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User, GoogleAuthProvider, signInWithCredential, signInWithRedirect, getRedirectResult } from 'firebase/auth'
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User, GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth'
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react'
@@ -72,6 +72,7 @@ import {
 } from './progress'
 import { checkInactivity, getStageAccessories, onLessonComplete, onCardReview } from './mascot'
 import { MascotWidget } from './MascotWidget'
+import { playCorrect, playLevelUp, playWrong, unlockAudioOnFirstGesture } from './sound'
 import {
   CLAN_MAX_MEMBERS,
   clanXpBonus,
@@ -173,10 +174,7 @@ function App() {
   const effectiveUser = user ?? (guestEmail ? ({ email: guestEmail, uid: 'guest' } as unknown as User) : null)
 
   useEffect(() => {
-    getRedirectResult(auth).catch((err: any) => {
-      const message = err?.message
-      if (message) setAuthError('Google: ' + message)
-    })
+    unlockAudioOnFirstGesture()
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser)
       setIsAuthLoading(false)
@@ -214,6 +212,7 @@ function App() {
   const [lastSpeechMatched, setLastSpeechMatched] = useState(false)
   const [mandarinVoice, setMandarinVoice] = useState<SpeechSynthesisVoice | null>(null)
   const [now, setNow] = useState(0)
+  const [celebrate, setCelebrate] = useState<{ kind: 'good' | 'bad'; text: string; key: number } | null>(null)
   const [clan, setClan] = useState<ClanDoc | null>(null)
   const [clanMembers, setClanMembers] = useState<ClanMember[]>([])
   const [topClans, setTopClans] = useState<ClanDoc[]>([])
@@ -468,6 +467,8 @@ function App() {
         ? current.mascot
         : onLessonComplete(nextBase.mascot, today)
 
+      if (!alreadyCompleted) playLevelUp()
+
       return {
         ...nextBase,
         mascot: updatedMascot,
@@ -513,6 +514,14 @@ function App() {
     setActiveTab('practice')
   }
 
+  function flashToast(kind: 'good' | 'bad', text: string) {
+    const key = Date.now()
+    setCelebrate({ kind, text, key })
+    window.setTimeout(() => {
+      setCelebrate((current) => (current && current.key === key ? null : current))
+    }, 1500)
+  }
+
   function chooseQuizAnswer(choice: string) {
     if (quizLocked) return
     setQuizLocked(true)
@@ -520,6 +529,8 @@ function App() {
     const isRight = choice === quizPhrase.portuguese
 
     if (!isRight) {
+      playWrong()
+      flashToast('bad', `Resposta certa: ${quizPhrase.portuguese}`)
       setProgress((current) =>
         recordMistake(current, {
           type: 'lesson',
@@ -530,6 +541,9 @@ function App() {
           helper: quizPhrase.note,
         }),
       )
+    } else {
+      playCorrect()
+      flashToast('good', '好! Boa.')
     }
 
     speak(quizPhrase.hanzi)
@@ -761,6 +775,13 @@ function App() {
   }
 
   function handleChunkResult(chunk: Chunk, correct: boolean, answer: string) {
+    if (correct) {
+      playCorrect()
+      flashToast('good', 'Bloco completo! +6 XP')
+    } else {
+      playWrong()
+      flashToast('bad', `Resposta: ${chunk.blankAnswer}`)
+    }
     setProgress((current) => {
       if (!correct) {
         return recordMistake(current, {
@@ -830,6 +851,7 @@ function App() {
   }
 
   function recordWritingMistake(character: WritingCharacter, reason: string) {
+    playWrong()
     setProgress((current) =>
       recordMistake(current, {
         type: 'writing',
@@ -843,6 +865,7 @@ function App() {
   }
 
   function completeWritingPractice(character: WritingCharacter) {
+    playCorrect()
     setProgress((current) => {
       const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
       const baseProgress = resolveMistake(
@@ -933,7 +956,9 @@ function App() {
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
             onClick={async () => {
               setAuthError('')
-              // 1) Try the native plugin (Capacitor on Android).
+              // Capacitor (Android): use the native plugin. NO web fallback —
+              // the WebView serves at https://localhost/ and a redirect/popup
+              // would bounce to localhost and break.
               if (Capacitor.isNativePlatform()) {
                 try {
                   const result = await FirebaseAuthentication.signInWithGoogle()
@@ -942,21 +967,29 @@ function App() {
                     await signInWithCredential(auth, credential)
                     return
                   }
+                  setAuthError('Google nao retornou token. Tente convidado abaixo.')
+                  return
                 } catch (err: any) {
-                  // Fall through to the web redirect below.
-                  console.warn('Native Google sign-in failed:', err?.message)
+                  const message = err?.message || 'erro do plugin nativo'
+                  setAuthError('Google nativo falhou: ' + message + '. Use convidado por enquanto.')
+                  return
                 }
               }
-              // 2) Use redirect directly — popups are blocked on most mobile browsers.
+              // Browser flow: popup only. Redirect bounces to authDomain and
+              // tries to come back to localhost in dev, which is broken.
               const provider = new GoogleAuthProvider()
               provider.addScope('email')
               provider.addScope('profile')
               try {
-                await signInWithRedirect(auth, provider)
+                await signInWithPopup(auth, provider)
               } catch (err: any) {
                 const code = err?.code || ''
                 if (code.includes('operation-not-allowed') || code.includes('not-enabled')) {
                   setAuthError('O provedor Google nao esta habilitado no Firebase Console deste projeto. Use convidado por enquanto.')
+                } else if (code.includes('popup-blocked')) {
+                  setAuthError('Popup bloqueado pelo navegador. Libere popups para este site e tente de novo, ou entre como convidado.')
+                } else if (code.includes('popup-closed') || code.includes('cancelled-popup-request')) {
+                  setAuthError('Voce fechou o popup antes de terminar. Tente de novo.')
                 } else {
                   setAuthError('Google indisponivel: ' + (err?.message || 'use convidado abaixo.'))
                 }
@@ -1006,6 +1039,16 @@ function App() {
 
   return (
     <main className="app-shell">
+      {celebrate && (
+        <div
+          key={celebrate.key}
+          className={celebrate.kind === 'bad' ? 'celebrate-toast bad' : 'celebrate-toast'}
+          role="status"
+          aria-live="polite"
+        >
+          {celebrate.text}
+        </div>
+      )}
       <aside className="side-nav" aria-label="Navegacao principal">
         <div className="brand-lockup">
           <div className="brand-mark brand-mark-logo" aria-hidden="true">
@@ -2531,17 +2574,19 @@ function validateWritingAttempt(
     return { ok: false, message: `Meta: ${character.strokes} tracos principais.` }
   }
 
-  const minimumUsefulStrokes = Math.max(2, Math.floor(character.strokes * 0.7))
-  if (strokesDrawn < minimumUsefulStrokes) {
+  // Stroke count must match the real character (±0 — no slack).
+  if (strokesDrawn !== character.strokes) {
     return {
       ok: false,
-      message: `Faltam movimentos principais. Faca pelo menos ${minimumUsefulStrokes} tracos claros.`,
+      message: strokesDrawn < character.strokes
+        ? `Faltam tracos. Voce fez ${strokesDrawn}, o caractere tem ${character.strokes}.`
+        : `Tracos a mais. Voce fez ${strokesDrawn}, o caractere tem ${character.strokes}. Limpe e refaca.`,
     }
   }
 
   const points = strokes.flat()
-  if (points.length < Math.max(14, character.strokes * 5)) {
-    return { ok: false, message: 'Trace mais antes de validar — caractere ainda pouco definido.' }
+  if (points.length < Math.max(20, character.strokes * 8)) {
+    return { ok: false, message: 'Tracos curtos demais. Refaca cobrindo a sombra do hanzi.' }
   }
 
   const bounds = getPointBounds(points)
@@ -2555,12 +2600,12 @@ function validateWritingAttempt(
     minPathLength: WRITING_MIN_PATH,
   }
 
-  if (widthRatio < template.minWidthRatio * 0.82 || heightRatio < template.minHeightRatio * 0.82) {
-    return { ok: false, message: 'A forma ficou pequena ou concentrada. Use mais espaco do grid do hanzi.' }
+  if (widthRatio < template.minWidthRatio * 0.95 || heightRatio < template.minHeightRatio * 0.95) {
+    return { ok: false, message: 'A forma ficou pequena. Ocupe quase todo o grid, igual ao hanzi guia.' }
   }
 
-  if (pathLength < template.minPathLength * 0.75) {
-    return { ok: false, message: 'O caminho ficou curto demais. Complete mais o caractere.' }
+  if (pathLength < template.minPathLength * 0.95) {
+    return { ok: false, message: 'O caminho ficou curto demais. Cubra a sombra do caractere completo.' }
   }
 
   const touchedFineCells = new Set(
@@ -2570,8 +2615,14 @@ function validateWritingAttempt(
       return `${col}-${row}`
     }),
   )
-  if (touchedFineCells.size < Math.max(4, Math.ceil(character.strokes * 0.6))) {
-    return { ok: false, message: 'A forma cobriu poucas areas do hanzi. Espalhe o traco seguindo a sombra.' }
+  if (touchedFineCells.size < Math.max(6, Math.ceil(character.strokes * 0.85))) {
+    return { ok: false, message: 'A forma cobriu poucas areas. Espalhe o traco seguindo a sombra do hanzi.' }
+  }
+
+  // Anti-scribble: if all points fit in 1-2 fine cells, reject (concentrated mess).
+  const pointsPerCell = points.length / Math.max(1, touchedFineCells.size)
+  if (touchedFineCells.size <= 3 && pointsPerCell > 40) {
+    return { ok: false, message: 'Parece um rabisco numa area so. Refaca seguindo o tracado.' }
   }
 
   const touchedCells = new Set(
@@ -2582,7 +2633,8 @@ function validateWritingAttempt(
     }),
   )
   const hitCells = template.cells.filter((cell) => touchedCells.has(cell)).length
-  const neededCells = Math.max(3, Math.ceil(template.cells.length * 0.65))
+  // Almost all template cells must be hit — this is what enforces shape.
+  const neededCells = Math.max(template.cells.length - 1, Math.ceil(template.cells.length * 0.92))
 
   if (hitCells < neededCells) {
     return { ok: false, message: 'A forma nao bateu com a estrutura do hanzi. Siga a sombra como guia.' }
