@@ -114,10 +114,11 @@ export function DirectionCNavButton({
   return (
     <div className="directionc-nav-content">
       <div className={active ? 'directionc-nav-icon active' : 'directionc-nav-icon'}>
-        {symbol ? <span className="directionc-nav-symbol">{symbol}</span> : <Icon size={16} strokeWidth={2.2} />}
+        <Icon size={17} strokeWidth={2.2} />
         {badge > 0 ? <span className="directionc-nav-badge">{badge}</span> : null}
       </div>
-      <span>{label}</span>
+      <span className="directionc-nav-label">{label}</span>
+      {symbol ? <span className="directionc-nav-symbol" aria-hidden="true">{symbol}</span> : null}
     </div>
   )
 }

@@ -126,6 +126,16 @@ const quizOptions = [
   'amigo',
   'beber agua',
   'sem problema',
+  'China',
+  'pessoa',
+  'com licenca',
+  'onde fica o banheiro?',
+  'tres horas',
+  'amanha as dez',
+  'estou cansado',
+  'quero descansar',
+  'pai',
+  'mae',
 ]
 
 const FREEZE_COST = 80
@@ -403,11 +413,15 @@ function App() {
 
   const quizPhrase = selectedLesson.phrases[lessonStep] ?? selectedLesson.phrases[0]
   const options = useMemo(() => {
-    return Array.from(new Set([quizPhrase.portuguese, ...quizOptions]))
-      .filter(Boolean)
+    const distractors = quizOptions
+      .filter((option) => option && option !== quizPhrase.portuguese)
+      .sort((left, right) => optionRank(`${selectedLesson.id}-${quizPhrase.id}`, left) - optionRank(`${selectedLesson.id}-${quizPhrase.id}`, right))
+      .slice(0, 3)
+
+    return [quizPhrase.portuguese, ...distractors]
       .slice(0, 4)
       .sort((left, right) => optionRank(selectedLesson.id, left) - optionRank(selectedLesson.id, right))
-  }, [quizPhrase.portuguese, selectedLesson.id])
+  }, [quizPhrase.id, quizPhrase.portuguese, selectedLesson.id])
 
   async function speak(text: string, rate = 0.78) {
     const cleanText = normalizeSpeechText(text)
