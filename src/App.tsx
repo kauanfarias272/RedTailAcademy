@@ -92,6 +92,7 @@ type PracticeMode = 'cards' | 'chunks' | 'speak' | 'write'
 type Difficulty = 'hard' | 'good' | 'easy'
 type MicState = 'idle' | 'starting' | 'listening' | 'processing' | 'success' | 'fail' | 'error'
 type CultureFilter = 'all' | 'meme' | 'music' | 'history' | 'pronunciation'
+type LessonRunStats = { attempts: number; correct: number }
 type MandarinTtsPlugin = {
   speak(options: { text: string; rate?: number }): Promise<{ spoken: boolean }>
   stop(): Promise<void>
@@ -328,6 +329,7 @@ function App() {
   const [quizChoice, setQuizChoice] = useState('')
   const [quizLocked, setQuizLocked] = useState(false)
   const [isAutoAdvancing, setIsAutoAdvancing] = useState(false)
+  const [lessonStats, setLessonStats] = useState<LessonRunStats>({ attempts: 0, correct: 0 })
   const [isCardFlipped, setIsCardFlipped] = useState(false)
   const [clipTitle, setClipTitle] = useState('')
   const [clipUrl, setClipUrl] = useState('')
@@ -661,6 +663,7 @@ function App() {
     setLessonStep(0)
     setQuizChoice('')
     setQuizLocked(false)
+    setLessonStats({ attempts: 0, correct: 0 })
     setSelectedLessonId(lessonId)
     setIsLessonActive(true)
   }
@@ -685,6 +688,7 @@ function App() {
       setLessonStep(0)
       setQuizChoice('')
       setQuizLocked(false)
+      setLessonStats({ attempts: 0, correct: 0 })
       return
     }
 
@@ -705,6 +709,10 @@ function App() {
     setQuizLocked(true)
     setQuizChoice(choice)
     const isRight = choice === quizPhrase.portuguese
+    setLessonStats((current) => ({
+      attempts: current.attempts + 1,
+      correct: current.correct + (isRight ? 1 : 0),
+    }))
 
     if (!isRight) {
       playWrong()
@@ -725,6 +733,12 @@ function App() {
     }
 
     speak(quizPhrase.hanzi)
+    if (isLessonRewardStep(lessonStep, selectedLesson.phrases.length)) {
+      setIsAutoAdvancing(false)
+      if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
+      return
+    }
+
     setIsAutoAdvancing(true)
     if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
     autoAdvanceTimer.current = window.setTimeout(advanceLessonFlow, 1500)
@@ -1354,6 +1368,7 @@ function App() {
             quizChoice={quizChoice}
             quizLocked={quizLocked}
             isAutoAdvancing={isAutoAdvancing}
+            lessonStats={lessonStats}
             options={options}
             progress={progress}
             currentTime={now || Date.now()}
@@ -1362,6 +1377,7 @@ function App() {
             onCloseLesson={() => {
               if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
               setIsAutoAdvancing(false)
+              setLessonStats({ attempts: 0, correct: 0 })
               setIsLessonActive(false)
             }}
             onChoose={chooseQuizAnswer}
@@ -1669,6 +1685,11 @@ function firstAvailableLessonId(progress: Pick<LearningProgress, 'completedLesso
   return lessons.find((lesson) => lessonAccess(lesson.id, progress, timestamp).canStart)?.id ?? lessons[0].id
 }
 
+function isLessonRewardStep(stepIndex: number, stepTotal: number) {
+  const visibleStep = stepIndex + 1
+  return visibleStep === stepTotal || (stepTotal > 3 && visibleStep % 2 === 0)
+}
+
 function lessonAccess(lessonId: string, progress: Pick<LearningProgress, 'completedLessons' | 'lessonReviews'>, timestamp: number) {
   const index = lessonIndexById.get(lessonId) ?? -1
   const completed = progress.completedLessons.includes(lessonId)
@@ -1895,6 +1916,7 @@ function LearnView({
   quizChoice,
   quizLocked,
   isAutoAdvancing,
+  lessonStats,
   options,
   progress,
   currentTime,
@@ -1913,6 +1935,7 @@ function LearnView({
   quizChoice: string
   quizLocked: boolean
   isAutoAdvancing: boolean
+  lessonStats: LessonRunStats
   options: string[]
   progress: LearningProgress
   currentTime: number
@@ -1927,6 +1950,8 @@ function LearnView({
   const isCorrect = quizChoice === phrase.portuguese
   const activeUnit = unitById.get(selectedLesson.unitId) ?? units[0]
   const currentTabLabel = `${activeUnit.level} / ${stepIndex + 1} de ${stepTotal}`
+  const showReward = quizLocked && isLessonRewardStep(stepIndex, stepTotal)
+  const rewardKind = stepIndex + 1 === stepTotal ? 'complete' : 'checkpoint'
   const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
   const activeLessonRef = useRef<HTMLButtonElement | null>(null)
   const selectedAccess = lessonAccess(selectedLesson.id, progress, currentTime)
@@ -2026,16 +2051,27 @@ function LearnView({
             </p>
           </div>
 
-          <div className="lesson-footer">
-            <div>
-              <span>Padrao de tons</span>
-              <strong>{phrase.tonePattern}</strong>
+          {showReward ? (
+            <LessonRewardCard
+              kind={rewardKind}
+              lesson={selectedLesson}
+              stats={lessonStats}
+              stepIndex={stepIndex}
+              stepTotal={stepTotal}
+              onContinue={onAdvanceNow}
+            />
+          ) : (
+            <div className="lesson-footer">
+              <div>
+                <span>Padrao de tons</span>
+                <strong>{phrase.tonePattern}</strong>
+              </div>
+              <button className="primary-action" type="button" disabled={!quizLocked} onClick={onAdvanceNow}>
+                {stepIndex + 1 === stepTotal ? 'Concluir' : 'Proxima'}
+                <ChevronRight size={18} />
+              </button>
             </div>
-            <button className="primary-action" type="button" disabled={!quizLocked} onClick={onAdvanceNow}>
-              {stepIndex + 1 === stepTotal ? 'Concluir' : 'Proxima'}
-              <ChevronRight size={18} />
-            </button>
-          </div>
+          )}
         </section>
       </div>
     )
@@ -2134,6 +2170,66 @@ function LearnView({
         </div>
       </section>
     </div>
+  )
+}
+
+function LessonRewardCard({
+  kind,
+  lesson,
+  stats,
+  stepIndex,
+  stepTotal,
+  onContinue,
+}: {
+  kind: 'checkpoint' | 'complete'
+  lesson: Lesson
+  stats: LessonRunStats
+  stepIndex: number
+  stepTotal: number
+  onContinue: () => void
+}) {
+  const accuracy = stats.attempts > 0 ? Math.round((stats.correct / stats.attempts) * 100) : 0
+  const isComplete = kind === 'complete'
+
+  return (
+    <section className={isComplete ? 'lesson-reward-card complete' : 'lesson-reward-card'} aria-label={isComplete ? 'Licao concluida' : 'Checkpoint'}>
+      <div className="lesson-reward-art" aria-hidden="true">
+        <div className="reward-scroll left"></div>
+        <div className="reward-koi">
+          <span className="reward-koi-eye left"></span>
+          <span className="reward-koi-eye right"></span>
+          <span className="reward-koi-tail"></span>
+        </div>
+        <div className="reward-books">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div className="reward-scroll right"></div>
+      </div>
+
+      <div className="lesson-reward-copy">
+        <p className="eyebrow">{isComplete ? 'Licao concluida' : `Checkpoint ${stepIndex + 1}/${stepTotal}`}</p>
+        <h3>{isComplete ? 'Boa. Esse tema entrou no seu caminho.' : 'Respira um pouco. Voce esta indo bem.'}</h3>
+        <span>{lesson.focus}</span>
+      </div>
+
+      <div className="lesson-reward-stats" aria-label="Resumo do progresso">
+        <div>
+          <span>Acuracia</span>
+          <strong>{accuracy}%</strong>
+        </div>
+        <div>
+          <span>XP</span>
+          <strong>{isComplete ? `+${lesson.xp}` : `${stats.correct}/${stats.attempts}`}</strong>
+        </div>
+      </div>
+
+      <button className="primary-action lesson-reward-action" type="button" onClick={onContinue}>
+        {isComplete ? 'Concluir licao' : 'Continuar'}
+        <ChevronRight size={18} />
+      </button>
+    </section>
   )
 }
 

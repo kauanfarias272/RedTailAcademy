@@ -5209,6 +5209,194 @@ body,
   outline: none;
 }
 
+.lesson-reward-card {
+  padding: 12px;
+  border: 1px solid rgba(90, 139, 106, 0.38);
+  border-radius: 10px;
+  display: grid;
+  gap: 11px;
+  background:
+    linear-gradient(180deg, rgba(245, 234, 214, 0.12), rgba(245, 234, 214, 0.04)),
+    var(--c-surface-hi);
+  color: var(--c-ink);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+}
+
+.lesson-reward-card.complete {
+  border-color: rgba(212, 160, 74, 0.46);
+}
+
+.lesson-reward-art {
+  position: relative;
+  min-height: 118px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(245, 234, 214, 0.58), rgba(245, 234, 214, 0.10)),
+    radial-gradient(circle at 50% 90%, rgba(90, 139, 106, 0.24), transparent 42%);
+}
+
+.reward-scroll {
+  position: absolute;
+  top: 8px;
+  width: 42px;
+  height: 92px;
+  border-radius: 18px 18px 4px 4px;
+  background: repeating-linear-gradient(180deg, rgba(212, 160, 74, 0.18) 0 8px, rgba(245, 234, 214, 0.10) 8px 15px);
+  opacity: 0.54;
+}
+
+.reward-scroll.left {
+  left: 14px;
+  transform: rotate(-7deg);
+}
+
+.reward-scroll.right {
+  right: 14px;
+  transform: rotate(7deg);
+}
+
+.reward-koi {
+  position: relative;
+  width: 92px;
+  height: 76px;
+  border-radius: 48% 52% 54% 46%;
+  background: linear-gradient(180deg, #64bfe9, #2f8fc6);
+  box-shadow: inset 0 -16px 0 rgba(255, 255, 255, 0.16), 0 12px 24px rgba(47, 143, 198, 0.25);
+}
+
+.reward-koi::before,
+.reward-koi::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  width: 24px;
+  height: 20px;
+  border-radius: 4px 80% 4px 80%;
+  background: #fffaf4;
+}
+
+.reward-koi::before {
+  left: 12px;
+  transform: rotate(-22deg);
+}
+
+.reward-koi::after {
+  right: 12px;
+  transform: rotate(22deg) scaleX(-1);
+}
+
+.reward-koi-eye {
+  position: absolute;
+  top: 34px;
+  width: 13px;
+  height: 17px;
+  border-radius: 999px;
+  background: var(--c-bg);
+  box-shadow: 0 0 0 5px rgba(255, 250, 244, 0.72);
+  z-index: 2;
+}
+
+.reward-koi-eye.left {
+  left: 28px;
+}
+
+.reward-koi-eye.right {
+  right: 28px;
+}
+
+.reward-koi-tail {
+  position: absolute;
+  left: -19px;
+  bottom: 8px;
+  width: 34px;
+  height: 30px;
+  border-radius: 70% 10% 70% 10%;
+  background: var(--c-red);
+  transform: rotate(-18deg);
+}
+
+.reward-books {
+  position: absolute;
+  right: 42px;
+  bottom: 13px;
+  display: grid;
+  gap: 3px;
+}
+
+.reward-books span {
+  width: 48px;
+  height: 10px;
+  border-radius: 999px;
+  display: block;
+  background: var(--c-jade);
+}
+
+.reward-books span:nth-child(2) {
+  width: 58px;
+  background: var(--c-red);
+}
+
+.reward-books span:nth-child(3) {
+  width: 52px;
+  background: var(--c-gold);
+}
+
+.lesson-reward-copy {
+  text-align: center;
+}
+
+.lesson-reward-copy h3 {
+  margin: 2px auto 5px;
+  max-width: 340px;
+  color: var(--c-ink);
+  font-family: var(--c-serif);
+  font-size: 19px;
+  line-height: 1.15;
+}
+
+.lesson-reward-copy span {
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.lesson-reward-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lesson-reward-stats div {
+  min-height: 72px;
+  padding: 11px 10px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: rgba(245, 234, 214, 0.08);
+  border: 1px solid rgba(245, 234, 214, 0.12);
+}
+
+.lesson-reward-stats span {
+  color: var(--c-gold);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.lesson-reward-stats strong {
+  color: var(--c-ink);
+  font-family: var(--c-serif);
+  font-size: 27px;
+  line-height: 1;
+}
+
+.lesson-reward-action {
+  width: 100%;
+}
+
 .mistake-choice-area {
   display: grid;
   gap: 10px;
@@ -5276,6 +5464,22 @@ body,
     min-height: 42px;
     padding: 7px 8px;
     font-size: 12px;
+  }
+
+  .lesson-reward-art {
+    min-height: 96px;
+  }
+
+  .lesson-reward-copy h3 {
+    font-size: 16px;
+  }
+
+  .lesson-reward-stats div {
+    min-height: 62px;
+  }
+
+  .lesson-reward-stats strong {
+    font-size: 23px;
   }
 
   .lesson-tab-hero {
