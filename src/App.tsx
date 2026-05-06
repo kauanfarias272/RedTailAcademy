@@ -1359,6 +1359,11 @@ function App() {
             currentTime={now || Date.now()}
             isLessonActive={isLessonActive}
             onSelectLesson={startLesson}
+            onCloseLesson={() => {
+              if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
+              setIsAutoAdvancing(false)
+              setIsLessonActive(false)
+            }}
             onChoose={chooseQuizAnswer}
             onSpeak={speak}
             onAdvanceNow={advanceLessonFlow}
@@ -1895,6 +1900,7 @@ function LearnView({
   currentTime,
   isLessonActive,
   onSelectLesson,
+  onCloseLesson,
   onChoose,
   onSpeak,
   onAdvanceNow,
@@ -1912,6 +1918,7 @@ function LearnView({
   currentTime: number
   isLessonActive: boolean
   onSelectLesson: (lessonId: string) => void
+  onCloseLesson: () => void
   onChoose: (choice: string) => void
   onSpeak: (text: string) => void
   onAdvanceNow: () => void
@@ -1921,7 +1928,6 @@ function LearnView({
   const activeUnit = unitById.get(selectedLesson.unitId) ?? units[0]
   const currentTabLabel = `${activeUnit.level} / ${stepIndex + 1} de ${stepTotal}`
   const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
-  const unitDone = (lessonsByUnit[activeUnit.id] ?? []).filter((lesson) => completedLessonSet.has(lesson.id)).length
   const activeLessonRef = useRef<HTMLButtonElement | null>(null)
   const selectedAccess = lessonAccess(selectedLesson.id, progress, currentTime)
   const startLabel = selectedAccess.kind === 'review' ? 'Revisar licao' : 'Iniciar licao'
@@ -1947,21 +1953,14 @@ function LearnView({
     return (
       <div className="lesson-active-layout">
         <section className="lesson-panel lesson-panel-live">
-          <div className="lesson-focus-banner" aria-label="Modo licao">
-            <div className={`lesson-tab-mark ${activeUnit.accent}`}>{phrase.hanzi.slice(0, 1)}</div>
-            <div>
-              <p className="eyebrow">{currentTabLabel}</p>
-              <h2>{selectedLesson.focus}</h2>
-              <span>{activeUnit.title} - {unitDone}/{activeUnit.lessonIds.length} licoes fechadas</span>
-            </div>
-          </div>
-
           <div className="lesson-panel-header">
             <div>
-              <p className="eyebrow">{selectedLesson.focus}</p>
+              <p className="eyebrow">{currentTabLabel}</p>
               <h2>{selectedLesson.title}</h2>
             </div>
-            <span className="pill">{selectedLesson.minutes} min</span>
+            <button className="lesson-quit-button" type="button" onClick={onCloseLesson}>
+              <Undo2 size={16} /> Desistir
+            </button>
           </div>
 
           <div className="lesson-progress">
@@ -1988,7 +1987,6 @@ function LearnView({
               />
             </div>
           </div>
-          <ConnectionChips items={phraseConnectionMap[phrase.id]} />
 
           <div className="quiz-block">
             <p className="eyebrow">Escolha a traducao</p>
@@ -3080,7 +3078,7 @@ function WritingView({
                 ? `Treino salvo. Voce fez ${strokesDrawn} tracos.`
                 : (strokesDrawn > 0 && !validation.ok
                   ? (validationMessage || validation.message)
-                  : `Meta: ${selectedCharacter.strokes} tracos seguindo a ordem dos numeros.`)}
+                  : `Tente chegar perto de ${selectedCharacter.strokes} tracos principais seguindo os numeros.`)}
             </p>
           </>
         )}
@@ -3145,18 +3143,19 @@ function validateWritingAttempt(
     return { ok: false, message: `Meta: ${character.strokes} tracos principais.` }
   }
 
-  // Stroke count must match the real character (±0 — no slack).
-  if (strokesDrawn !== character.strokes) {
+  const minStrokes = Math.max(1, character.strokes - 1)
+  const maxStrokes = character.strokes + Math.max(1, Math.ceil(character.strokes * 0.35))
+  if (strokesDrawn < minStrokes || strokesDrawn > maxStrokes) {
     return {
       ok: false,
-      message: strokesDrawn < character.strokes
-        ? `Faltam tracos. Voce fez ${strokesDrawn}, o caractere tem ${character.strokes}.`
-        : `Tracos a mais. Voce fez ${strokesDrawn}, o caractere tem ${character.strokes}. Limpe e refaca.`,
+      message: strokesDrawn < minStrokes
+        ? `Faltam alguns tracos principais. Voce fez ${strokesDrawn}; tente chegar perto de ${character.strokes}.`
+        : `Tem tracos demais. Limpe e tente simplificar perto de ${character.strokes} tracos principais.`,
     }
   }
 
   const points = strokes.flat()
-  if (points.length < Math.max(20, character.strokes * 8)) {
+  if (points.length < Math.max(12, character.strokes * 5)) {
     return { ok: false, message: 'Tracos curtos demais. Refaca cobrindo a sombra do hanzi.' }
   }
 
@@ -3171,12 +3170,12 @@ function validateWritingAttempt(
     minPathLength: WRITING_MIN_PATH,
   }
 
-  if (widthRatio < template.minWidthRatio * 0.95 || heightRatio < template.minHeightRatio * 0.95) {
-    return { ok: false, message: 'A forma ficou pequena. Ocupe quase todo o grid, igual ao hanzi guia.' }
+  if (widthRatio < template.minWidthRatio * 0.68 || heightRatio < template.minHeightRatio * 0.68) {
+    return { ok: false, message: 'A forma ficou pequena. Aumente um pouco para ocupar melhor o grid.' }
   }
 
-  if (pathLength < template.minPathLength * 0.95) {
-    return { ok: false, message: 'O caminho ficou curto demais. Cubra a sombra do caractere completo.' }
+  if (pathLength < template.minPathLength * 0.58) {
+    return { ok: false, message: 'O caminho ficou curto demais. Cubra mais da sombra do caractere.' }
   }
 
   const touchedFineCells = new Set(
@@ -3186,7 +3185,7 @@ function validateWritingAttempt(
       return `${col}-${row}`
     }),
   )
-  if (touchedFineCells.size < Math.max(6, Math.ceil(character.strokes * 0.85))) {
+  if (touchedFineCells.size < Math.max(4, Math.ceil(character.strokes * 0.45))) {
     return { ok: false, message: 'A forma cobriu poucas areas. Espalhe o traco seguindo a sombra do hanzi.' }
   }
 
@@ -3204,8 +3203,7 @@ function validateWritingAttempt(
     }),
   )
   const hitCells = template.cells.filter((cell) => touchedCells.has(cell)).length
-  // Almost all template cells must be hit — this is what enforces shape.
-  const neededCells = Math.max(template.cells.length - 1, Math.ceil(template.cells.length * 0.92))
+  const neededCells = Math.max(2, Math.ceil(template.cells.length * 0.45))
 
   if (hitCells < neededCells) {
     return { ok: false, message: 'A forma nao bateu com a estrutura do hanzi. Siga a sombra como guia.' }
