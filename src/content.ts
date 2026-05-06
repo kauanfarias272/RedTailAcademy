@@ -16,6 +16,7 @@ export type Lesson = {
   xp: number
   minutes: number
   phrases: Phrase[]
+  curiosity?: string
 }
 
 export type Unit = {
@@ -73,6 +74,94 @@ export type Chunk = {
   note: string
 }
 
+export type CulturalTrivia = {
+  id: string
+  title: string
+  content: string
+  theme: 'linguagem' | 'costume' | 'historia' | 'tradicao' | 'celebracao' | 'natureza' | 'arte'
+}
+
+export const culturalTrivias: CulturalTrivia[] = [
+  {
+    id: 'trivia-tons-origem',
+    title: '🎵 Voce sabia? Os tons do mandarim vem da musica!',
+    content: 'Os 4 tons do mandarim evoluiram da linguagem musical antiga da China. A lingua e tao musical que em certos dialetos, uma pessoa a cantarolar pode ser entendida!',
+    theme: 'linguagem',
+  },
+  {
+    id: 'trivia-ni-hao-formal',
+    title: '👋 Voce sabia? "Ni hao" nem sempre era a saudacao padrao!',
+    content: 'Ate os anos 1950, os chineses nao diziam "ni hao" como saudacao geral. O governo promo essa frase para simplificar o idioma e tornar a comunicacao mais igualitaria, independentemente de classe social.',
+    theme: 'historia',
+  },
+  {
+    id: 'trivia-numeros-sorte',
+    title: '🔢 Voce sabia? Alguns numeros sao de sorte (ou azar)!',
+    content: 'Na China, o numero 8 (ba) soa como "fa" (prosperidade/riqueza), entao e super auspicioso. Ja o 4 (si) soa como "morte", entao muitos predios pulam o andar 4, 14, 24, etc! O povo chines leva numerologia muito a serio.',
+    theme: 'celebracao',
+  },
+  {
+    id: 'trivia-hanzi-imagem',
+    title: '🎨 Voce sabia? Cada caractere hanzi e um pequeno desenho!',
+    content: 'Os caracteres chineses nao sao arbitrarios. Muitos vem de imagens: "pessoa" (人) parece um palito inclinado como uma silhueta, "arvore" (木) tem 3 barras verticais lado a lado, e "floresta" (森) e feita de 3 caracteres "arvore"!',
+    theme: 'arte',
+  },
+  {
+    id: 'trivia-familia-relacoes',
+    title: '👨‍👩‍👧‍👦 Voce sabia? A familia e sagrada na cultura chinesa!',
+    content: 'Na China, existem palavras diferentes para cada tipo de tio, tia, primo, etc. dependendo se sao da linhagem paterna ou materna, e se sao mais velhos ou mais jovens. A hierarquia familiar e muito importante!',
+    theme: 'costume',
+  },
+  {
+    id: 'trivia-comida-cerimonia',
+    title: '🥢 Voce sabia? A comida e um ato de amor e respeito!',
+    content: 'Em refeicoes familiares chinesas, o prato especial fica no centro giratório, e os mais jovens ou menos honrados comem primeiro para o idoso. Dizer "chī fàn le?" (comeu arroz?) e uma forma comum de saudar, porque comer bem era antes um privilegio dos ricos!',
+    theme: 'tradicao',
+  },
+  {
+    id: 'trivia-semana-nomes',
+    title: '📅 Voce sabia? Os dias da semana chineses sao logicos!',
+    content: 'Segunda (xīngqī yī) significa "semana 1", terca "semana 2", etc. Domingo (xīngqī riú ou zhōu rì) significa "semana sol" ou "semana grande". E muito mais sistematico que os nomes aleatorios em portugues!',
+    theme: 'linguagem',
+  },
+  {
+    id: 'trivia-carpa-dragao-lenda',
+    title: '🐉 Voce sabia? A lenda do Carpa-Dragao e sobre perseveranca!',
+    content: 'A lenda chinesa da "Carpa pulando pela Porta do Dragao" (鯉魚跳龍門) fala de um carpa que sobe uma cachoeira perigosa. Se conseguir, vira um dragao poderoso. Representa superar obstaculos e alcancar o sucesso atraves de esforco - perfeito para seu aprendizado!',
+    theme: 'historia',
+  },
+  {
+    id: 'trivia-dragao-simbolo',
+    title: '🐲 Voce sabia? O dragao e a criatura mais auspiciosa da China!',
+    content: 'Diferentes do Ocidente, dragoes chineses sao simbolos de poder, sabedoria e boa sorte. Sao associados com agua, fertilidade e a familia imperial. Voce vai se transformar em um quando completar as fases!',
+    theme: 'celebracao',
+  },
+  {
+    id: 'trivia-direccoes-cores',
+    title: '🌈 Voce sabia? As cores tem significados na cultura chinesa!',
+    content: 'Vermelho = sorte e prosperidade. Amarelo/dourado = poder imperial. Branco = morte e luto. Preto = desventura. Por isso as nossas fases tem cores especiais: vermelho para fase 1 (iniciante), jade para fase 2, dourado para fase 3, e tinta para fase 4!',
+    theme: 'tradicao',
+  },
+  {
+    id: 'trivia-escrita-antiga',
+    title: '📖 Voce sabia? Os caracteres chineses tem mais de 3000 anos!',
+    content: 'A escrita chinesa e uma das poucas linguas modernas que mantém continuidade com scripts antigos. Alguns caracteres atuais sao reconheciveis nos "ossos de oraculo" de 1200 a.C.!',
+    theme: 'historia',
+  },
+  {
+    id: 'trivia-mandarim-lingua',
+    title: '🗣️ Voce sabia? "Mandarim" vem do portugues!',
+    content: 'A palavra "mandarim" vem de "Mandarin" em ingles, que vem de "Mandarim" em portugues antigo, que vem do malaio "menteri" (ministro). Os mandarins eram os funcionarios publicos educados que falavam o dialeto oficial da capital!',
+    theme: 'linguagem',
+  },
+  {
+    id: 'trivia-terra-meio',
+    title: '🌍 Voce sabia? "China" significa "Pais do Meio"!',
+    content: 'Zhongguo (中国) literalmente significa "Reino do Meio" ou "Pais Centrale". Os antigos chineses acreditavam que sua civilizacao era o centro do mundo, cercada por barbaros em todas as direcoes. Uma visao bem centrada em si mesmos!',
+    theme: 'historia',
+  },
+]
+
 export const units: Unit[] = [
   {
     id: 'tones',
@@ -116,6 +205,7 @@ export const lessons: Lesson[] = [
     focus: 'Tons 3-3, saudacao basica',
     xp: 15,
     minutes: 5,
+    curiosity: '👋 Voce sabia? "Ni hao" nem sempre era a saudacao padrao! Ate os anos 1950, os chineses nao diziam "ni hao" como saudacao geral. O governo promo essa frase para simplificar o idioma e tornar a comunicacao mais igualitaria, independentemente de classe social.',
     phrases: [
       {
         id: 'ni-hao',
@@ -144,6 +234,7 @@ export const lessons: Lesson[] = [
     focus: 'ma nos tons 1, 2, 3 e 4',
     xp: 20,
     minutes: 6,
+    curiosity: '🎵 Voce sabia? Os tons do mandarim vem da musica! Os 4 tons do mandarim evoluiram da linguagem musical antiga da China. A lingua e tao musical que em certos dialetos, uma pessoa a cantarolar pode ser entendida!',
     phrases: [
       {
         id: 'ma-tones',
@@ -172,6 +263,7 @@ export const lessons: Lesson[] = [
     focus: 'zh, ch, sh, r',
     xp: 20,
     minutes: 7,
+    curiosity: '🌍 Voce sabia? "China" significa "Pais do Meio"! Zhongguo (中国) literalmente significa "Reino do Meio" ou "Pais Central". Os antigos chineses acreditavam que sua civilizacao era o centro do mundo, cercada por barbaros em todas as direcoes.',
     phrases: [
       {
         id: 'zhong-guo',
@@ -200,6 +292,7 @@ export const lessons: Lesson[] = [
     focus: 'Diferenca entre ui, iu, ao, ou',
     xp: 18,
     minutes: 6,
+    curiosity: '🎨 Voce sabia? Cada caractere hanzi e um pequeno desenho! Os caracteres chineses nao sao arbitrarios. Muitos vem de imagens: "pessoa" (人) parece um palito inclinado, "arvore" (木) tem 3 barras verticais, e "floresta" (森) e feita de 3 caracteres "arvore"!',
     phrases: [
       {
         id: 'gui-dui',
@@ -228,6 +321,7 @@ export const lessons: Lesson[] = [
     focus: 'Distincao entre n e ng finais',
     xp: 22,
     minutes: 7,
+    curiosity: '🗣️ Voce sabia? "Mandarim" vem do portugues! A palavra "mandarim" vem do malaio "menteri" (ministro). Os mandarins eram os funcionarios publicos educados que falavam o dialeto oficial da capital!',
     phrases: [
       {
         id: 'tan-tang',
@@ -256,6 +350,7 @@ export const lessons: Lesson[] = [
     focus: 'ola, ate logo, nome',
     xp: 18,
     minutes: 6,
+    curiosity: '🌈 Voce sabia? As cores tem significados especiais na China! Vermelho = sorte e prosperidade. Amarelo/dourado = poder imperial. Branco = morte. Nossas fases tem cores especiais para representar sua jornada!',
     phrases: [
       {
         id: 'zao-shang-hao',
@@ -284,6 +379,7 @@ export const lessons: Lesson[] = [
     focus: 'obrigado, desculpa, sem problema',
     xp: 18,
     minutes: 6,
+    curiosity: '👨‍👩‍👧‍👦 Voce sabia? A familia e sagrada na cultura chinesa! Existem palavras diferentes para cada tipo de tio, tia, primo, dependendo se sao da linhagem paterna ou materna. A hierarquia familiar e muito importante!',
     phrases: [
       {
         id: 'xie-xie',
@@ -312,6 +408,7 @@ export const lessons: Lesson[] = [
     focus: 'particula ma e perguntas simples',
     xp: 20,
     minutes: 7,
+    curiosity: '📖 Voce sabia? Os caracteres chineses tem mais de 3000 anos! A escrita chinesa mantém continuidade com scripts antigos. Alguns caracteres atuais sao reconheciveis nos "ossos de oraculo" de 1200 a.C.!',
     phrases: [
       {
         id: 'ni-hao-ma',
@@ -340,6 +437,7 @@ export const lessons: Lesson[] = [
     focus: 'Nome, profissao, procedencia',
     xp: 20,
     minutes: 7,
+    curiosity: '🐉 Voce sabia? O dragao e a criatura mais auspiciosa da China! Diferentes do Ocidente, dragoes chineses sao simbolos de poder, sabedoria e boa sorte, associados com agua, fertilidade e a familia imperial!',
     phrases: [
       {
         id: 'wo-jiao',
@@ -368,6 +466,7 @@ export const lessons: Lesson[] = [
     focus: 'Ontem esta aqui, vem ca',
     xp: 22,
     minutes: 7,
+    curiosity: '🐉 Voce sabia? A lenda do Carpa-Dragao e sobre perseveranca! A lenda chinesa da "Carpa pulando pela Porta do Dragao" (鯉魚跳龍門) fala de um carpa que sobe uma cachoeira perigosa. Representa superar obstaculos e alcancar sucesso!',
     phrases: [
       {
         id: 'zai-nar',
@@ -396,6 +495,7 @@ export const lessons: Lesson[] = [
     focus: 'contagem e reconhecimento auditivo',
     xp: 16,
     minutes: 5,
+    curiosity: '🔢 Voce sabia? Alguns numeros sao de sorte (ou azar)! O numero 8 (ba) soa como "fa" (prosperidade), entao e auspicioso. O 4 (si) soa como "morte", entao muitos predios pulam o andar 4, 14, 24, etc!',
     phrases: [
       {
         id: 'yi-er-san',
@@ -424,6 +524,7 @@ export const lessons: Lesson[] = [
     focus: 'preco e demonstrativos',
     xp: 22,
     minutes: 7,
+    curiosity: '💰 Voce sabia? O dinheiro e um simbolo importante em muitas celebracoes chinesas! Durante o Ano Novo Lunar, presentes de dinheiro em envelopes vermelhos (hongbao) sao dados para trazer sorte e prosperidade!',
     phrases: [
       {
         id: 'duo-shao-qian',
@@ -452,6 +553,7 @@ export const lessons: Lesson[] = [
     focus: 'quero, uma unidade, agua',
     xp: 22,
     minutes: 7,
+    curiosity: '🥢 Voce sabia? A comida e um ato de amor e respeito na China! Em refeicoes familiares, o prato especial fica no centro giratório. Os jovens comem primeiro para o idoso, porque comer bem era privilégio dos ricos!',
     phrases: [
       {
         id: 'wo-yao',
@@ -480,6 +582,7 @@ export const lessons: Lesson[] = [
     focus: '11 a 99, dias da semana',
     xp: 24,
     minutes: 8,
+    curiosity: '📅 Voce sabia? Os dias da semana chineses sao logicos! Segunda (xīngqī yī) significa "semana 1", terca "semana 2". Domingo (xīngqī riú) significa "semana sol". Muito mais sistematico que nomes aleatorios!',
     phrases: [
       {
         id: 'shi-yi',
@@ -508,6 +611,7 @@ export const lessons: Lesson[] = [
     focus: 'Rua, numero, andar',
     xp: 24,
     minutes: 8,
+    curiosity: '🏠 Voce sabia? Os numeros pares e impares tem significados especiais! Numeros com digitos pares sao preferidos, pois representam harmonia e equilíbrio. Por isso os enderecos pode ter numeros como 888 ou 666!',
     phrases: [
       {
         id: 'lu-hao',
@@ -536,6 +640,7 @@ export const lessons: Lesson[] = [
     focus: 'pessoas proximas',
     xp: 18,
     minutes: 6,
+    curiosity: '👨‍👩‍👧‍👦 Voce sabia? A familia e o centro da vida chinesa! A palavra "jia" (家) significa tanto "casa" como "familia" porque sao inseparaveis na cultura chinesa. A lealdade familiar vem em primeiro lugar!',
     phrases: [
       {
         id: 'wo-de-jia',
@@ -564,6 +669,7 @@ export const lessons: Lesson[] = [
     focus: 'comer, beber, arroz',
     xp: 20,
     minutes: 7,
+    curiosity: '🍚 Voce sabia? O arroz e tao importante que "chī fàn" (comer arroz) virou sinonimo de "fazer uma refeicao"! Arroz tem sido o carboidrato principal ha mais de 8000 anos. Comer bem e uma forma de respeito!',
     phrases: [
       {
         id: 'chi-fan',
@@ -592,6 +698,7 @@ export const lessons: Lesson[] = [
     focus: 'tempo basico',
     xp: 20,
     minutes: 7,
+    curiosity: '⏰ Voce sabia? A China usa um calendario lunar antigo alem do gregoriano! O Ano Novo Lunar (Spring Festival / 春節) e a celebracao mais importante, marcada pelo calendario lunar. E por isso que tem datas diferentes todo ano!',
     phrases: [
       {
         id: 'jin-tian',
@@ -620,6 +727,7 @@ export const lessons: Lesson[] = [
     focus: 'Gostar, desportos, passatempos',
     xp: 22,
     minutes: 7,
+    curiosity: '🏸 Voce sabia? O badminton (羽毛球) e super popular na China! Muitissimo mais que tenis. Voce vera pessoas jogando em parques e ruas em qualquer cidade. E um pastime muito popular entre todas as idades!',
     phrases: [
       {
         id: 'xi-huan-you-yong',
@@ -648,6 +756,7 @@ export const lessons: Lesson[] = [
     focus: 'Grande, pequeno, bonito, feio',
     xp: 22,
     minutes: 7,
+    curiosity: '🎨 Voce sabia? A estetica chinesa valoriza a simplicidade e a naturalidade! O conceito de "shang" (上 - superior/elevado) representa beleza refinada. "Piaolaing" (漂亮 = flutuante-brilhante) combina dois conceitos de elegancia!',
     phrases: [
       {
         id: 'da-xiaoyang',
