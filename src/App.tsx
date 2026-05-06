@@ -2415,10 +2415,26 @@ function ChunksView({
             <p className="eyebrow">Chunks (Influx)</p>
             <h2>Aprenda blocos prontos, nao palavras soltas.</h2>
           </div>
-          <div className="hud-pill">
-            <Boxes size={16} />
-            <strong>{index + 1}</strong>
-            <span>/ {chunks.length}</span>
+          <div className="chunk-header-actions">
+            {stage !== 'study' && (
+              <button
+                className="lesson-close-pill"
+                type="button"
+                onClick={() => {
+                  setStage('study')
+                  setAnswer('')
+                  setIsDropReady(false)
+                }}
+                title="Fechar licao"
+              >
+                <Undo2 size={16} /> Fechar
+              </button>
+            )}
+            <div className="hud-pill">
+              <Boxes size={16} />
+              <strong>{index + 1}</strong>
+              <span>/ {chunks.length}</span>
+            </div>
           </div>
         </div>
 
@@ -2714,14 +2730,17 @@ function WritingView({
   const [canvasSize, setCanvasSize] = useState({ width: 430, height: 430 })
   const [validationMessage, setValidationMessage] = useState('')
   const [practiceDone, setPracticeDone] = useState(false)
+  const [practiceStarted, setPracticeStarted] = useState(false)
+  const [showStrokeHints, setShowStrokeHints] = useState(true)
 
-  useFocusMode(strokesDrawn > 0 && !practiceDone)
+  useFocusMode(practiceStarted && !practiceDone)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const isDrawing = useRef(false)
   const activeStroke = useRef<DrawPoint[]>([])
   const selectedCharacter =
     writingCharacters.find((character) => character.id === selectedId) ?? writingCharacters[0]
   const selectedOpenMistake = openMistakes.find((mistake) => mistake.itemId === selectedCharacter.id)
+  const strokeHints = selectedCharacter.strokeHints ?? []
 
   function setupCanvas() {
     const canvas = canvasRef.current
@@ -2808,6 +2827,12 @@ function WritingView({
     setPracticeDone(false)
   }
 
+  function resetForCharacter() {
+    resetCanvas()
+    setPracticeStarted(false)
+    setShowStrokeHints(true)
+  }
+
   function completeWritingPractice(character: WritingCharacter) {
     if (!validation.ok) {
       const reason = validation.message
@@ -2829,57 +2854,129 @@ function WritingView({
         <div className="writing-header">
           <div>
             <p className="eyebrow">Treino de escrita</p>
-            <h2>Trace o hanzi no grid.</h2>
+            <h2>{practiceStarted ? `Trace ${selectedCharacter.character}` : `Estudar ${selectedCharacter.character}`}</h2>
             {selectedOpenMistake && <span className="writing-error-badge">Erro pendente</span>}
           </div>
-          <button className="icon-action" type="button" onClick={() => onSpeak(selectedCharacter.character)} title="Ouvir">
-            <Volume2 size={20} />
-          </button>
-        </div>
-
-        <div className="writing-canvas-wrap">
-          <div className="writing-grid" aria-hidden="true">
-            <span>{selectedCharacter.character}</span>
+          <div className="writing-header-actions">
+            {practiceStarted && (
+              <button
+                className="lesson-close-pill"
+                type="button"
+                onClick={resetForCharacter}
+                title="Fechar licao"
+              >
+                <Undo2 size={16} /> Fechar
+              </button>
+            )}
+            <button className="icon-action" type="button" onClick={() => onSpeak(selectedCharacter.character)} title="Ouvir">
+              <Volume2 size={20} />
+            </button>
           </div>
-          <canvas
-            key={selectedCharacter.id}
-            aria-label={`Area para desenhar ${selectedCharacter.character}`}
-            className="writing-canvas"
-            ref={canvasRef}
-            onPointerDown={startDrawing}
-            onPointerMove={draw}
-            onPointerUp={stopDrawing}
-            onPointerCancel={stopDrawing}
-            onPointerLeave={stopDrawing}
-          />
         </div>
 
-        <div className="writing-controls">
-          <button type="button" onClick={resetCanvas}>
-            <Eraser size={18} />
-            Limpar
-          </button>
-          <button type="button" onClick={resetCanvas}>
-            <Undo2 size={18} />
-            Repetir
-          </button>
-          <button
-            className="primary-action"
-            type="button"
-            disabled={strokesDrawn === 0}
-            onClick={() => completeWritingPractice(selectedCharacter)}
-          >
-            <CheckCircle2 size={18} />
-            Validar
-          </button>
-        </div>
-        <p className={practiceDone ? 'feedback good' : (strokesDrawn > 0 && !validation.ok ? 'feedback error' : 'feedback')}>
-          {practiceDone
-            ? `Treino salvo. Voce fez ${strokesDrawn} tracos.`
-            : (strokesDrawn > 0 && !validation.ok
-              ? (validationMessage || validation.message)
-              : `Meta: ${selectedCharacter.strokes} tracos principais e forma dentro das zonas do hanzi.`)}
-        </p>
+        {!practiceStarted ? (
+          <div className="writing-intro">
+            <div className="writing-intro-grid" aria-hidden="true">
+              <span>{selectedCharacter.character}</span>
+              {strokeHints.map((hint, index) => (
+                <span
+                  className="stroke-hint-dot"
+                  key={`${selectedCharacter.id}-${index}`}
+                  style={{ left: `${hint.x}%`, top: `${hint.y}%` }}
+                >
+                  <em>{index + 1}</em>
+                  <small>{hint.arrow}</small>
+                </span>
+              ))}
+            </div>
+            <div className="writing-intro-meta">
+              <p className="eyebrow">{selectedCharacter.pinyin} · {selectedCharacter.meaning}</p>
+              <h3>Ordem dos tracos ({selectedCharacter.strokes})</h3>
+              <ol className="writing-intro-steps">
+                {selectedCharacter.strokeOrder.map((step, index) => {
+                  const arrow = strokeHints[index]?.arrow ?? ''
+                  return (
+                    <li key={step}>
+                      <span className="step-num">{index + 1}</span>
+                      <span className="step-text">{step}</span>
+                      {arrow && <span className="step-arrow">{arrow}</span>}
+                    </li>
+                  )
+                })}
+              </ol>
+              <button
+                className="primary-action lesson-start-cta"
+                type="button"
+                onClick={() => setPracticeStarted(true)}
+              >
+                <Brush size={18} /> Iniciar licao
+              </button>
+              <small className="writing-intro-hint">
+                Comece pelo numero 1 e siga a direcao da seta. Voce pode esconder os numeros quando estiver tracando.
+              </small>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="writing-canvas-wrap">
+              <div className="writing-grid" aria-hidden="true">
+                <span>{selectedCharacter.character}</span>
+              </div>
+              {showStrokeHints && strokeHints.length > 0 && (
+                <div className="stroke-hint-overlay" aria-hidden="true">
+                  {strokeHints.map((hint, index) => (
+                    <span
+                      className="stroke-hint-dot"
+                      key={`live-${selectedCharacter.id}-${index}`}
+                      style={{ left: `${hint.x}%`, top: `${hint.y}%` }}
+                    >
+                      <em>{index + 1}</em>
+                      <small>{hint.arrow}</small>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <canvas
+                key={selectedCharacter.id}
+                aria-label={`Area para desenhar ${selectedCharacter.character}`}
+                className="writing-canvas"
+                ref={canvasRef}
+                onPointerDown={startDrawing}
+                onPointerMove={draw}
+                onPointerUp={stopDrawing}
+                onPointerCancel={stopDrawing}
+                onPointerLeave={stopDrawing}
+              />
+            </div>
+
+            <div className="writing-controls">
+              <button type="button" onClick={() => setShowStrokeHints((current) => !current)} title="Mostrar/esconder ordem dos tracos">
+                {showStrokeHints ? <Eraser size={18} /> : <Brush size={18} />}
+                {showStrokeHints ? 'Esconder guia' : 'Mostrar guia'}
+              </button>
+              <button type="button" onClick={resetCanvas}>
+                <Undo2 size={18} />
+                Limpar
+              </button>
+              <button
+                className="primary-action"
+                type="button"
+                disabled={strokesDrawn === 0}
+                onClick={() => completeWritingPractice(selectedCharacter)}
+              >
+                <CheckCircle2 size={18} />
+                Validar
+              </button>
+            </div>
+            <p className={practiceDone ? 'feedback good' : (strokesDrawn > 0 && !validation.ok ? 'feedback error' : 'feedback')}>
+              {practiceDone
+                ? `Treino salvo. Voce fez ${strokesDrawn} tracos.`
+                : (strokesDrawn > 0 && !validation.ok
+                  ? (validationMessage || validation.message)
+                  : `Meta: ${selectedCharacter.strokes} tracos seguindo a ordem dos numeros.`)}
+            </p>
+          </>
+        )}
       </section>
 
       <section className="stroke-panel">
@@ -2895,6 +2992,8 @@ function WritingView({
                 setDrawnStrokes([])
                 setValidationMessage('')
                 setPracticeDone(false)
+                setPracticeStarted(false)
+                setShowStrokeHints(true)
               }}
             >
               <strong>{character.character}</strong>
