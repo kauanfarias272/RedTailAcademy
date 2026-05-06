@@ -2013,43 +2013,45 @@ function LearnView({
             </div>
           </div>
 
-          <div className="quiz-block">
-            <p className="eyebrow">Escolha a traducao</p>
-            <div className="answer-grid">
-              {options.map((option) => {
-                const isChosen = quizChoice === option
-                const isAnswer = option === phrase.portuguese
-                const reveal = quizLocked && isAnswer
-                return (
-                  <button
-                    className={[
-                      'answer-option',
-                      isChosen ? 'selected' : '',
-                      isChosen && isAnswer ? 'correct' : '',
-                      isChosen && !isAnswer ? 'wrong' : '',
-                      reveal && !isChosen ? 'reveal' : '',
-                      quizLocked ? 'locked' : '',
-                    ].filter(Boolean).join(' ')}
-                    key={option}
-                    type="button"
-                    disabled={quizLocked}
-                    onClick={() => onChoose(option)}
-                  >
-                    {option}
-                  </button>
-                )
-              })}
+          {!showReward && (
+            <div className="quiz-block">
+              <p className="eyebrow">Escolha a traducao</p>
+              <div className="answer-grid">
+                {options.map((option) => {
+                  const isChosen = quizChoice === option
+                  const isAnswer = option === phrase.portuguese
+                  const reveal = quizLocked && isAnswer
+                  return (
+                    <button
+                      className={[
+                        'answer-option',
+                        isChosen ? 'selected' : '',
+                        isChosen && isAnswer ? 'correct' : '',
+                        isChosen && !isAnswer ? 'wrong' : '',
+                        reveal && !isChosen ? 'reveal' : '',
+                        quizLocked ? 'locked' : '',
+                      ].filter(Boolean).join(' ')}
+                      key={option}
+                      type="button"
+                      disabled={quizLocked}
+                      onClick={() => onChoose(option)}
+                    >
+                      {option}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className={isCorrect ? 'feedback good' : quizLocked ? 'feedback error' : 'feedback'}>
+                {isCorrect && isAutoAdvancing
+                  ? 'Correto. Avancando...'
+                  : quizLocked && !isCorrect
+                  ? `Errado. Voce treina esse na aba Erros. Resposta: ${phrase.portuguese}.`
+                  : quizChoice
+                  ? phrase.note
+                  : ' '}
+              </p>
             </div>
-            <p className={isCorrect ? 'feedback good' : quizLocked ? 'feedback error' : 'feedback'}>
-              {isCorrect && isAutoAdvancing
-                ? 'Correto. Avancando...'
-                : quizLocked && !isCorrect
-                ? `Errado. Voce treina esse na aba Erros. Resposta: ${phrase.portuguese}.`
-                : quizChoice
-                ? phrase.note
-                : ' '}
-            </p>
-          </div>
+          )}
 
           {showReward ? (
             <LessonRewardCard
@@ -2194,18 +2196,11 @@ function LessonRewardCard({
   return (
     <section className={isComplete ? 'lesson-reward-card complete' : 'lesson-reward-card'} aria-label={isComplete ? 'Licao concluida' : 'Checkpoint'}>
       <div className="lesson-reward-art" aria-hidden="true">
-        <div className="reward-scroll left"></div>
         <div className="reward-koi">
           <span className="reward-koi-eye left"></span>
           <span className="reward-koi-eye right"></span>
           <span className="reward-koi-tail"></span>
         </div>
-        <div className="reward-books">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-        <div className="reward-scroll right"></div>
       </div>
 
       <div className="lesson-reward-copy">
@@ -2220,7 +2215,7 @@ function LessonRewardCard({
           <strong>{accuracy}%</strong>
         </div>
         <div>
-          <span>XP</span>
+          <span>{isComplete ? 'XP' : 'Acertos'}</span>
           <strong>{isComplete ? `+${lesson.xp}` : `${stats.correct}/${stats.attempts}`}</strong>
         </div>
       </div>

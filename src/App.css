@@ -5210,11 +5210,12 @@ body,
 }
 
 .lesson-reward-card {
+  align-self: start;
   padding: 12px;
   border: 1px solid rgba(90, 139, 106, 0.38);
   border-radius: 10px;
   display: grid;
-  gap: 11px;
+  gap: 10px;
   background:
     linear-gradient(180deg, rgba(245, 234, 214, 0.12), rgba(245, 234, 214, 0.04)),
     var(--c-surface-hi);
@@ -5228,120 +5229,74 @@ body,
 
 .lesson-reward-art {
   position: relative;
-  min-height: 118px;
+  min-height: 82px;
   border-radius: 9px;
   display: grid;
   place-items: center;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(245, 234, 214, 0.58), rgba(245, 234, 214, 0.10)),
-    radial-gradient(circle at 50% 90%, rgba(90, 139, 106, 0.24), transparent 42%);
-}
-
-.reward-scroll {
-  position: absolute;
-  top: 8px;
-  width: 42px;
-  height: 92px;
-  border-radius: 18px 18px 4px 4px;
-  background: repeating-linear-gradient(180deg, rgba(212, 160, 74, 0.18) 0 8px, rgba(245, 234, 214, 0.10) 8px 15px);
-  opacity: 0.54;
-}
-
-.reward-scroll.left {
-  left: 14px;
-  transform: rotate(-7deg);
-}
-
-.reward-scroll.right {
-  right: 14px;
-  transform: rotate(7deg);
+    radial-gradient(circle at 50% 58%, rgba(100, 191, 233, 0.34), transparent 35%),
+    linear-gradient(180deg, rgba(245, 234, 214, 0.18), rgba(245, 234, 214, 0.05));
 }
 
 .reward-koi {
   position: relative;
-  width: 92px;
-  height: 76px;
+  width: 72px;
+  height: 58px;
   border-radius: 48% 52% 54% 46%;
   background: linear-gradient(180deg, #64bfe9, #2f8fc6);
-  box-shadow: inset 0 -16px 0 rgba(255, 255, 255, 0.16), 0 12px 24px rgba(47, 143, 198, 0.25);
+  box-shadow: inset 0 -12px 0 rgba(255, 255, 255, 0.16), 0 10px 22px rgba(47, 143, 198, 0.25);
 }
 
 .reward-koi::before,
 .reward-koi::after {
   content: '';
   position: absolute;
-  top: 12px;
-  width: 24px;
-  height: 20px;
+  top: 9px;
+  width: 19px;
+  height: 16px;
   border-radius: 4px 80% 4px 80%;
   background: #fffaf4;
 }
 
 .reward-koi::before {
-  left: 12px;
+  left: 9px;
   transform: rotate(-22deg);
 }
 
 .reward-koi::after {
-  right: 12px;
+  right: 9px;
   transform: rotate(22deg) scaleX(-1);
 }
 
 .reward-koi-eye {
   position: absolute;
-  top: 34px;
-  width: 13px;
-  height: 17px;
+  top: 26px;
+  width: 10px;
+  height: 14px;
   border-radius: 999px;
   background: var(--c-bg);
-  box-shadow: 0 0 0 5px rgba(255, 250, 244, 0.72);
+  box-shadow: 0 0 0 4px rgba(255, 250, 244, 0.72);
   z-index: 2;
 }
 
 .reward-koi-eye.left {
-  left: 28px;
+  left: 22px;
 }
 
 .reward-koi-eye.right {
-  right: 28px;
+  right: 22px;
 }
 
 .reward-koi-tail {
   position: absolute;
-  left: -19px;
-  bottom: 8px;
-  width: 34px;
-  height: 30px;
+  left: -16px;
+  bottom: 6px;
+  width: 27px;
+  height: 24px;
   border-radius: 70% 10% 70% 10%;
   background: var(--c-red);
   transform: rotate(-18deg);
-}
-
-.reward-books {
-  position: absolute;
-  right: 42px;
-  bottom: 13px;
-  display: grid;
-  gap: 3px;
-}
-
-.reward-books span {
-  width: 48px;
-  height: 10px;
-  border-radius: 999px;
-  display: block;
-  background: var(--c-jade);
-}
-
-.reward-books span:nth-child(2) {
-  width: 58px;
-  background: var(--c-red);
-}
-
-.reward-books span:nth-child(3) {
-  width: 52px;
-  background: var(--c-gold);
 }
 
 .lesson-reward-copy {
@@ -5349,11 +5304,11 @@ body,
 }
 
 .lesson-reward-copy h3 {
-  margin: 2px auto 5px;
+  margin: 2px auto 4px;
   max-width: 340px;
   color: var(--c-ink);
   font-family: var(--c-serif);
-  font-size: 19px;
+  font-size: 17px;
   line-height: 1.15;
 }
 
@@ -5370,8 +5325,8 @@ body,
 }
 
 .lesson-reward-stats div {
-  min-height: 72px;
-  padding: 11px 10px;
+  min-height: 58px;
+  padding: 9px 10px;
   border-radius: 9px;
   display: grid;
   place-items: center;
@@ -5389,7 +5344,7 @@ body,
 .lesson-reward-stats strong {
   color: var(--c-ink);
   font-family: var(--c-serif);
-  font-size: 27px;
+  font-size: 23px;
   line-height: 1;
 }
 
@@ -5467,7 +5422,7 @@ body,
   }
 
   .lesson-reward-art {
-    min-height: 96px;
+    min-height: 72px;
   }
 
   .lesson-reward-copy h3 {
@@ -5475,11 +5430,11 @@ body,
   }
 
   .lesson-reward-stats div {
-    min-height: 62px;
+    min-height: 54px;
   }
 
   .lesson-reward-stats strong {
-    font-size: 23px;
+    font-size: 21px;
   }
 
   .lesson-tab-hero {
