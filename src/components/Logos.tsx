@@ -1,4 +1,5 @@
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const LOGO_TOKENS = {
   bg: '#0e0a08',
   paper: '#f5ead6',

@@ -70,7 +70,7 @@ import {
 } from './progress'
 import { checkInactivity, getStageAccessories, onLessonComplete, onCardReview } from './mascot'
 import { MascotWidget } from './MascotWidget'
-import { playCorrect, playLevelUp, playWrong, unlockAudioOnFirstGesture } from './sound'
+import { playCorrect, playLessonComplete, playLevelUp, playWrong, unlockAudioOnFirstGesture } from './sound'
 import { useFocusMode } from './focusMode'
 import {
   CLAN_MAX_MEMBERS,
@@ -91,6 +91,7 @@ type Tab = 'learn' | 'practice' | 'errors' | 'clan' | 'clips' | 'mascot' | 'prof
 type PracticeMode = 'cards' | 'chunks' | 'speak' | 'write'
 type Difficulty = 'hard' | 'good' | 'easy'
 type MicState = 'idle' | 'starting' | 'listening' | 'processing' | 'success' | 'fail' | 'error'
+type CultureFilter = 'all' | 'meme' | 'music' | 'history' | 'pronunciation'
 type MandarinTtsPlugin = {
   speak(options: { text: string; rate?: number }): Promise<{ spoken: boolean }>
   stop(): Promise<void>
@@ -115,6 +116,14 @@ const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen; symbol: s
 const secondaryNavItems: Array<{ id: Tab; label: string; icon: typeof BookOpen }> = [
   { id: 'clips', label: 'Cultura', icon: Headphones },
   { id: 'mascot', label: 'Koi', icon: Fish },
+]
+
+const cultureFilters: Array<{ id: CultureFilter; label: string }> = [
+  { id: 'all', label: 'Tudo' },
+  { id: 'meme', label: 'Memes' },
+  { id: 'music', label: 'Musicas' },
+  { id: 'history', label: 'Historia' },
+  { id: 'pronunciation', label: 'Pronuncia' },
 ]
 
 const quizOptions = [
@@ -339,6 +348,21 @@ function App() {
   const today = useToday()
 
   useEffect(() => {
+    if (isLessonActive) return
+    const handle = window.setTimeout(() => {
+      const timestamp = now || Date.now()
+      setSelectedLessonId((currentLessonId) => {
+        const preferredLessonId = firstAvailableLessonId(progress, timestamp)
+        const access = lessonAccess(currentLessonId, progress, timestamp)
+        const currentIsCompleted = progress.completedLessons.includes(currentLessonId)
+        const preferredIsNew = !progress.completedLessons.includes(preferredLessonId)
+        return !access.canStart || (currentIsCompleted && preferredIsNew) ? preferredLessonId : currentLessonId
+      })
+    }, 0)
+    return () => window.clearTimeout(handle)
+  }, [isLessonActive, now, progress])
+
+  useEffect(() => {
     const updateNow = () => setNow(Date.now())
     updateNow()
     const timer = window.setInterval(updateNow, 60_000)
@@ -388,9 +412,11 @@ function App() {
   // Subscribe to current clan
   useEffect(() => {
     if (!isFirebaseUser || !progress.clanId) {
-      setClan(null)
-      setClanMembers([])
-      return
+      const handle = window.setTimeout(() => {
+        setClan(null)
+        setClanMembers([])
+      }, 0)
+      return () => window.clearTimeout(handle)
     }
     const unsub = subscribeClan(progress.clanId, async (next) => {
       setClan(next)
@@ -412,8 +438,8 @@ function App() {
   // Subscribe to top clans
   useEffect(() => {
     if (!isFirebaseUser) {
-      setTopClans([])
-      return
+      const handle = window.setTimeout(() => setTopClans([]), 0)
+      return () => window.clearTimeout(handle)
     }
     const unsub = subscribeTopClans((list) => setTopClans(list))
     return () => unsub()
@@ -442,8 +468,8 @@ function App() {
     try {
       const created = await createClan(clanMember, name, emoji)
       setProgress((current) => ({ ...current, clanId: created.id }))
-    } catch (err: any) {
-      setClanError(err?.message || 'Nao deu para criar o cla.')
+    } catch (err: unknown) {
+      setClanError(errorMessage(err, 'Nao deu para criar o cla.'))
     }
   }
 
@@ -453,8 +479,8 @@ function App() {
     try {
       const joined = await joinClanByCode(clanMember, code)
       setProgress((current) => ({ ...current, clanId: joined.id }))
-    } catch (err: any) {
-      setClanError(err?.message || 'Codigo invalido.')
+    } catch (err: unknown) {
+      setClanError(errorMessage(err, 'Codigo invalido.'))
     }
   }
 
@@ -508,14 +534,18 @@ function App() {
   const userLevel = progressLevel(progress.xp)
   const completedCount = progress.completedLessons.length
   const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
+  const unlockedCards = useMemo(
+    () => allPhrases.filter((phrase) => completedLessonSet.has(phrase.lessonId)),
+    [completedLessonSet],
+  )
   const dueCards = useMemo(
-    () => allPhrases.filter((phrase) => {
+    () => unlockedCards.filter((phrase) => {
       const card = progress.cards[phrase.id]
       return !card || card.dueAt <= now
     }),
-    [now, progress.cards],
+    [now, progress.cards, unlockedCards],
   )
-  const activeCard = dueCards[0] ?? allPhrases[0]
+  const activeCard = dueCards[0] ?? null
   const totalMinutes = useMemo(
     () => lessons.reduce((total, lesson) => completedLessonSet.has(lesson.id) ? total + lesson.minutes : total, 0),
     [completedLessonSet],
@@ -646,6 +676,7 @@ function App() {
       return
     }
 
+    playLessonComplete()
     completeLesson(selectedLesson)
     setIsLessonActive(false)
     const nextLessonId = getNextLessonId(selectedLesson.id)
@@ -700,6 +731,11 @@ function App() {
   }
 
   function reviewCard(difficulty: Difficulty) {
+    if (!activeCard) {
+      flashToast('bad', 'Conclua uma licao para liberar cartoes.')
+      return
+    }
+
     setProgress((current) => {
       const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
       const existing = current.cards[activeCard.id] ?? {
@@ -1071,8 +1107,8 @@ function App() {
               } else {
                 await signInWithEmailAndPassword(auth, authEmail, authPassword)
               }
-            } catch (err: any) {
-              setAuthError(err.message || 'Erro na autenticação')
+            } catch (err: unknown) {
+              setAuthError(errorMessage(err, 'Erro na autenticação'))
             }
           }}
         >
@@ -1143,8 +1179,8 @@ function App() {
               provider.addScope('profile')
               try {
                 await signInWithPopup(auth, provider)
-              } catch (err: any) {
-                const code = err?.code || ''
+              } catch (err: unknown) {
+                const code = errorCode(err)
                 if (code.includes('operation-not-allowed') || code.includes('not-enabled')) {
                   setAuthError('O provedor Google nao esta habilitado no Firebase Console deste projeto. Use convidado por enquanto.')
                 } else if (code.includes('popup-blocked')) {
@@ -1152,7 +1188,7 @@ function App() {
                 } else if (code.includes('popup-closed') || code.includes('cancelled-popup-request')) {
                   setAuthError('Voce fechou o popup antes de terminar. Tente de novo.')
                 } else {
-                  setAuthError('Google indisponivel: ' + (err?.message || 'use convidado abaixo.'))
+                  setAuthError('Google indisponivel: ' + errorMessage(err, 'use convidado abaixo.'))
                 }
               }
             }}
@@ -1323,7 +1359,6 @@ function App() {
             currentTime={now || Date.now()}
             isLessonActive={isLessonActive}
             onSelectLesson={startLesson}
-            onCloseLesson={() => setIsLessonActive(false)}
             onChoose={chooseQuizAnswer}
             onSpeak={speak}
             onAdvanceNow={advanceLessonFlow}
@@ -1456,22 +1491,22 @@ function App() {
               if (!second) return
               try {
                 await deleteCurrentAccount()
-              } catch (err: any) {
-                if (err?.code === 'auth/requires-recent-login') {
+              } catch (err: unknown) {
+                if (errorCode(err) === 'auth/requires-recent-login') {
                   try {
                     await deleteCurrentAccount({ kind: 'google' })
-                  } catch (reauthErr: any) {
+                  } catch (reauthErr: unknown) {
                     const password = window.prompt('Sessao antiga. Digite sua senha para confirmar a exclusao:') || ''
                     if (!password) return
                     try {
                       await deleteCurrentAccount({ kind: 'password', password })
-                    } catch (finalErr: any) {
-                      window.alert('Nao deu para excluir: ' + (finalErr?.message || reauthErr?.message || err.message))
+                    } catch (finalErr: unknown) {
+                      window.alert('Nao deu para excluir: ' + errorMessage(finalErr, errorMessage(reauthErr, errorMessage(err, 'erro desconhecido'))))
                       return
                     }
                   }
                 } else {
-                  window.alert('Nao deu para excluir: ' + (err?.message || 'erro desconhecido'))
+                  window.alert('Nao deu para excluir: ' + errorMessage(err, 'erro desconhecido'))
                   return
                 }
               }
@@ -1623,6 +1658,12 @@ function firstPlayableLessonId(progress: Pick<LearningProgress, 'completedLesson
   return nextRequiredLessonId(progress) || lessons[0].id
 }
 
+function firstAvailableLessonId(progress: Pick<LearningProgress, 'completedLessons' | 'lessonReviews'>, timestamp: number) {
+  const nextRequired = nextRequiredLessonId(progress)
+  if (nextRequired && lessonAccess(nextRequired, progress, timestamp).canStart) return nextRequired
+  return lessons.find((lesson) => lessonAccess(lesson.id, progress, timestamp).canStart)?.id ?? lessons[0].id
+}
+
 function lessonAccess(lessonId: string, progress: Pick<LearningProgress, 'completedLessons' | 'lessonReviews'>, timestamp: number) {
   const index = lessonIndexById.get(lessonId) ?? -1
   const completed = progress.completedLessons.includes(lessonId)
@@ -1657,6 +1698,23 @@ function formatLessonCooldown(ms: number) {
   const hours = Math.max(1, Math.ceil(ms / (60 * 60 * 1000)))
   if (hours < 24) return `${hours}h`
   return `${Math.ceil(hours / 24)}d`
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string' && message) return message
+  }
+  return fallback
+}
+
+function errorCode(error: unknown) {
+  if (error && typeof error === 'object' && 'code' in error) {
+    const code = (error as { code?: unknown }).code
+    if (typeof code === 'string') return code
+  }
+  return ''
 }
 
 function normalizeSpeechText(text: string) {
@@ -1837,7 +1895,6 @@ function LearnView({
   currentTime,
   isLessonActive,
   onSelectLesson,
-  onCloseLesson,
   onChoose,
   onSpeak,
   onAdvanceNow,
@@ -1855,7 +1912,6 @@ function LearnView({
   currentTime: number
   isLessonActive: boolean
   onSelectLesson: (lessonId: string) => void
-  onCloseLesson: () => void
   onChoose: (choice: string) => void
   onSpeak: (text: string) => void
   onAdvanceNow: () => void
@@ -1866,51 +1922,46 @@ function LearnView({
   const currentTabLabel = `${activeUnit.level} / ${stepIndex + 1} de ${stepTotal}`
   const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
   const unitDone = (lessonsByUnit[activeUnit.id] ?? []).filter((lesson) => completedLessonSet.has(lesson.id)).length
+  const activeLessonRef = useRef<HTMLButtonElement | null>(null)
+  const selectedAccess = lessonAccess(selectedLesson.id, progress, currentTime)
+  const startLabel = selectedAccess.kind === 'review' ? 'Revisar licao' : 'Iniciar licao'
   const unitCompletion = (unitId: string) => {
     const unitLessons = lessonsByUnit[unitId] ?? []
     const done = unitLessons.filter((lesson) => completedLessonSet.has(lesson.id)).length
     return unitLessons.length ? Math.round((done / unitLessons.length) * 100) : 0
   }
 
+  useEffect(() => {
+    if (isLessonActive) return
+    const handle = window.setTimeout(() => {
+      activeLessonRef.current?.scrollIntoView({
+        block: 'center',
+        inline: 'nearest',
+        behavior: 'smooth',
+      })
+    }, 80)
+    return () => window.clearTimeout(handle)
+  }, [isLessonActive, selectedLessonId])
+
   if (isLessonActive) {
     return (
       <div className="lesson-active-layout">
-        <section className="lesson-tab-shell" aria-label="Licao aberta">
-          <div className="lesson-tab-strip">
-            <button className="lesson-open-tab active" type="button">
-              <BookOpen size={16} />
-              <span>{selectedLesson.title}</span>
-            </button>
-            <button className="lesson-open-tab" type="button" onClick={onCloseLesson}>
-              <Layers3 size={16} />
-              <span>Trilha</span>
-            </button>
-          </div>
-          <div className="lesson-tab-hero">
+        <section className="lesson-panel lesson-panel-live">
+          <div className="lesson-focus-banner" aria-label="Modo licao">
             <div className={`lesson-tab-mark ${activeUnit.accent}`}>{phrase.hanzi.slice(0, 1)}</div>
             <div>
               <p className="eyebrow">{currentTabLabel}</p>
               <h2>{selectedLesson.focus}</h2>
               <span>{activeUnit.title} - {unitDone}/{activeUnit.lessonIds.length} licoes fechadas</span>
             </div>
-            <button className="icon-action" type="button" onClick={onCloseLesson} title="Sair da licao">
-              <Undo2 size={18} />
-            </button>
           </div>
-        </section>
 
-        <section className="lesson-panel lesson-panel-live">
           <div className="lesson-panel-header">
             <div>
               <p className="eyebrow">{selectedLesson.focus}</p>
               <h2>{selectedLesson.title}</h2>
             </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <span className="pill">{selectedLesson.minutes} min</span>
-              <button className="icon-action" type="button" onClick={onCloseLesson} title="Sair da licao">
-                <Undo2 size={18} />
-              </button>
-            </div>
+            <span className="pill">{selectedLesson.minutes} min</span>
           </div>
 
           <div className="lesson-progress">
@@ -1996,6 +2047,32 @@ function LearnView({
 
   return (
     <div className="learn-grid c-screen">
+      <section className="trail-current-card" aria-label="Licao atual">
+        <div className="trail-current-main">
+          <div className={`trail-current-mark ${activeUnit.accent}`}>
+            {selectedLesson.phrases[0]?.hanzi.slice(0, 1) ?? phaseHanzi[0]}
+          </div>
+          <div className="trail-current-copy">
+            <p className="eyebrow">Licao atual</p>
+            <h2>{selectedLesson.title}</h2>
+            <div className="trail-current-meta">
+              <span>{activeUnit.title}</span>
+              <span>{selectedLesson.minutes} min</span>
+              <span>{selectedLesson.xp} XP</span>
+            </div>
+          </div>
+        </div>
+        <button
+          className="primary-action trail-current-action"
+          type="button"
+          disabled={!selectedAccess.canStart}
+          onClick={() => onSelectLesson(selectedLesson.id)}
+        >
+          {startLabel}
+          <ChevronRight size={18} />
+        </button>
+      </section>
+
       <section className="lesson-tree-panel c-trilha" aria-label="Trilha do Carpa-Dragao">
         {units.map((unit, unitIndex) => {
           const pct = unitCompletion(unit.id)
@@ -2029,7 +2106,11 @@ function LearnView({
                       ].filter(Boolean).join(' ')}
                       key={lesson.id}
                       type="button"
+                      ref={(node) => {
+                        if (active) activeLessonRef.current = node
+                      }}
                       disabled={locked}
+                      aria-current={active ? 'step' : undefined}
                       aria-disabled={!access.canStart}
                       onClick={() => onSelectLesson(lesson.id)}
                     >
@@ -2082,7 +2163,7 @@ function PracticeView({
 }: {
   mode: PracticeMode
   onModeChange: (mode: PracticeMode) => void
-  activeCard: (typeof allPhrases)[number]
+  activeCard: (typeof allPhrases)[number] | null
   dueCount: number
   flipped: boolean
   progress: LearningProgress
@@ -2175,7 +2256,7 @@ function CardsView({
   onReview,
   onSpeak,
 }: {
-  activeCard: (typeof allPhrases)[number]
+  activeCard: (typeof allPhrases)[number] | null
   dueCount: number
   flipped: boolean
   progress: LearningProgress
@@ -2184,20 +2265,26 @@ function CardsView({
   onSpeak: (text: string) => void
 }) {
   const reviewed = useMemo(() => Object.values(progress.cards).reduce((total, card) => total + card.reviewed, 0), [progress.cards])
+  const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
+  const unlockedCount = useMemo(
+    () => allPhrases.filter((phrase) => completedLessonSet.has(phrase.lessonId)).length,
+    [completedLessonSet],
+  )
   const deckItems = useMemo(
     () => allPhrases.map((phrase) => {
       const card = progress.cards[phrase.id]
+      const unlocked = completedLessonSet.has(phrase.lessonId)
       return (
-        <article className="deck-item" key={phrase.id}>
+        <article className={unlocked ? 'deck-item' : 'deck-item locked'} key={phrase.id}>
           <div>
             <strong>{phrase.hanzi}</strong>
             <span>{phrase.lessonTitle}</span>
           </div>
-          <small>{card ? `Caixa ${card.box}` : 'Novo'}</small>
+          <small>{unlocked ? (card ? `Caixa ${card.box}` : 'Novo') : 'Bloqueado'}</small>
         </article>
       )
     }),
-    [progress.cards],
+    [completedLessonSet, progress.cards],
   )
 
   return (
@@ -2208,34 +2295,50 @@ function CardsView({
             <p className="eyebrow">Fila de hoje</p>
             <h2>{dueCount} cartoes prontos</h2>
           </div>
-          <button className="icon-action" type="button" onClick={() => onSpeak(activeCard.hanzi)} title="Ouvir">
+          <button
+            className="icon-action"
+            type="button"
+            disabled={!activeCard}
+            onClick={() => activeCard && onSpeak(activeCard.hanzi)}
+            title="Ouvir"
+          >
             <Volume2 size={20} />
           </button>
         </div>
 
-        <button className={flipped ? 'flashcard flipped' : 'flashcard'} type="button" onClick={onFlip}>
-          <span>{flipped ? activeCard.portuguese : activeCard.hanzi}</span>
-          <strong>{flipped ? activeCard.note : activeCard.lessonTitle}</strong>
-          <small>{flipped ? 'Abra pronuncia/literal so se precisar.' : 'Toque para testar significado sem cola.'}</small>
-        </button>
-        <RevealStudyTabs
-          key={activeCard.id}
-          pronunciation={activeCard.pinyin}
-          literal={activeCard.literal}
-          literalNote={activeCard.note}
-        />
-        <ConnectionChips items={phraseConnectionMap[activeCard.id]} />
+        {activeCard ? (
+          <>
+            <button className={flipped ? 'flashcard flipped' : 'flashcard'} type="button" onClick={onFlip}>
+              <span>{flipped ? activeCard.portuguese : activeCard.hanzi}</span>
+              <strong>{flipped ? activeCard.note : activeCard.lessonTitle}</strong>
+              <small>{flipped ? 'Abra pronuncia/literal so se precisar.' : 'Toque para testar significado sem cola.'}</small>
+            </button>
+            <RevealStudyTabs
+              key={activeCard.id}
+              pronunciation={activeCard.pinyin}
+              literal={activeCard.literal}
+              literalNote={activeCard.note}
+            />
+            <ConnectionChips items={phraseConnectionMap[activeCard.id]} />
+          </>
+        ) : (
+          <div className="flashcard flashcard-empty">
+            <span>{unlockedCount ? '复习' : '上课'}</span>
+            <strong>{unlockedCount ? 'Nada vencido agora' : 'Conclua uma licao'}</strong>
+            <small>{unlockedCount ? 'Volte quando os cartoes liberados vencerem.' : 'Os cartoes nascem das licoes finalizadas.'}</small>
+          </div>
+        )}
 
         <div className="review-actions">
-          <button type="button" onClick={() => onReview('hard')}>
+          <button type="button" disabled={!activeCard} onClick={() => onReview('hard')}>
             <RotateCcw size={18} />
             Dificil
           </button>
-          <button type="button" onClick={() => onReview('good')}>
+          <button type="button" disabled={!activeCard} onClick={() => onReview('good')}>
             <CheckCircle2 size={18} />
             Bom
           </button>
-          <button type="button" onClick={() => onReview('easy')}>
+          <button type="button" disabled={!activeCard} onClick={() => onReview('easy')}>
             <Sparkles size={18} />
             Facil
           </button>
@@ -2245,8 +2348,8 @@ function CardsView({
       <section className="deck-panel">
         <div className="deck-header">
           <p className="eyebrow">Deck vivo</p>
-          <h2>{allPhrases.length} blocos da trilha</h2>
-          <span>{reviewed} revisoes feitas</span>
+          <h2>{unlockedCount}/{allPhrases.length} blocos liberados</h2>
+          <span>Koi fase {progress.mascot.stage} · {reviewed} revisoes feitas</span>
         </div>
         <div className="deck-list">
           {deckItems}
@@ -2890,8 +2993,19 @@ function WritingView({
               ))}
             </div>
             <div className="writing-intro-meta">
-              <p className="eyebrow">{selectedCharacter.pinyin} · {selectedCharacter.meaning}</p>
-              <h3>Ordem dos tracos ({selectedCharacter.strokes})</h3>
+              <div className="writing-intro-top">
+                <div className="writing-intro-heading">
+                  <p className="eyebrow">{selectedCharacter.pinyin} · {selectedCharacter.meaning}</p>
+                  <h3>Ordem dos tracos ({selectedCharacter.strokes})</h3>
+                </div>
+                <button
+                  className="primary-action lesson-start-cta"
+                  type="button"
+                  onClick={() => setPracticeStarted(true)}
+                >
+                  <Brush size={18} /> Iniciar licao
+                </button>
+              </div>
               <ol className="writing-intro-steps">
                 {selectedCharacter.strokeOrder.map((step, index) => {
                   const arrow = strokeHints[index]?.arrow ?? ''
@@ -2904,13 +3018,6 @@ function WritingView({
                   )
                 })}
               </ol>
-              <button
-                className="primary-action lesson-start-cta"
-                type="button"
-                onClick={() => setPracticeStarted(true)}
-              >
-                <Brush size={18} /> Iniciar licao
-              </button>
               <small className="writing-intro-hint">
                 Comece pelo numero 1 e siga a direcao da seta. Voce pode esconder os numeros quando estiver tracando.
               </small>
@@ -3352,15 +3459,35 @@ function ClipsView({
   onThemeChange: (value: string) => void
   onSpeak: (text: string) => void
 }) {
-  const heroMoment = studyMoments[0]
-  const moreMoments = studyMoments.slice(1)
+  const [cultureFilter, setCultureFilter] = useState<CultureFilter>('all')
+  const filteredMoments = useMemo(
+    () => studyMoments.filter((moment) => cultureMomentMatches(moment, cultureFilter)),
+    [cultureFilter, studyMoments],
+  )
+  const filteredSeeds = useMemo(
+    () => clipSeeds.filter((clip) => cultureClipMatches(clip.theme, cultureFilter)),
+    [cultureFilter],
+  )
+  const filteredSavedClips = useMemo(
+    () => savedClips.filter((clip) => cultureClipMatches(clip.theme, cultureFilter)),
+    [cultureFilter, savedClips],
+  )
+  const heroMoment = filteredMoments[0]
+  const moreMoments = filteredMoments.slice(1)
 
   return (
     <div className="clips-layout c-screen c-cultura">
       <section className="study-moments c-culture-feed">
         <div className="c-chip-row" aria-label="Filtros de cultura">
-          {['Tudo', 'Memes', 'Musica', 'Historico', 'Viral'].map((item, index) => (
-            <span className={index === 0 ? 'active' : ''} key={item}>{item}</span>
+          {cultureFilters.map((item) => (
+            <button
+              className={cultureFilter === item.id ? 'active' : ''}
+              key={item.id}
+              type="button"
+              onClick={() => setCultureFilter(item.id)}
+            >
+              {item.label}
+            </button>
           ))}
         </div>
 
@@ -3394,6 +3521,12 @@ function ClipsView({
           {moreMoments.map((moment) => (
             <StudyMomentCard key={moment.id} moment={moment} onSpeak={onSpeak} />
           ))}
+          {!heroMoment && (
+            <div className="culture-empty">
+              <strong>Nada nesse filtro ainda.</strong>
+              <span>Adicione uma fonte ou volte para Tudo.</span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -3406,12 +3539,18 @@ function ClipsView({
           <Library size={26} />
         </div>
         <div className="clip-grid">
-          {clipSeeds.map((clip) => (
+          {filteredSeeds.map((clip) => (
             <ClipCard key={clip.id} title={clip.title} theme={clip.theme} source={clip.source} url={clip.url} />
           ))}
-          {savedClips.map((clip) => (
+          {filteredSavedClips.map((clip) => (
             <ClipCard key={clip.id} title={clip.title} theme={clip.theme} source="Minha biblioteca" url={clip.url} />
           ))}
+          {filteredSeeds.length + filteredSavedClips.length === 0 && (
+            <div className="culture-empty">
+              <strong>Nenhuma fonte nesse filtro.</strong>
+              <span>Use o Clip lab para montar essa biblioteca.</span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -3448,6 +3587,24 @@ function ClipsView({
       </section>
     </div>
   )
+}
+
+function cultureMomentMatches(moment: StudyMoment, filter: CultureFilter) {
+  if (filter === 'all') return true
+  if (filter === 'meme') return moment.type === 'meme'
+  if (filter === 'music') return moment.type === 'song' || moment.type === 'anthem'
+  if (filter === 'history') return moment.type === 'history'
+  return false
+}
+
+function cultureClipMatches(theme: string, filter: CultureFilter) {
+  const normalized = theme.toLowerCase()
+  if (filter === 'all') return true
+  if (filter === 'music') return normalized.includes('musica') || normalized.includes('song')
+  if (filter === 'pronunciation') return ['pinyin', 'tons', 'pronuncia'].some((item) => normalized.includes(item))
+  if (filter === 'history') return normalized.includes('historia') || normalized.includes('cultura')
+  if (filter === 'meme') return normalized.includes('meme') || normalized.includes('viral')
+  return true
 }
 
 function StudyMomentCard({ moment, onSpeak }: { moment: StudyMoment; onSpeak: (text: string) => void }) {

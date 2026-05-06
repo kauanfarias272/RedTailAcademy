@@ -64,6 +64,13 @@ export function playLevelUp() {
   tone(1046.5, 260, { type: 'triangle', gain: 0.24, delayMs: 360 })
 }
 
+export function playLessonComplete() {
+  tone(392, 120, { type: 'triangle', gain: 0.18 })
+  tone(523.25, 140, { type: 'triangle', gain: 0.20, delayMs: 90 })
+  tone(659.25, 150, { type: 'triangle', gain: 0.22, delayMs: 190 })
+  tone(783.99, 260, { type: 'sine', gain: 0.20, delayMs: 320 })
+}
+
 export function unlockAudioOnFirstGesture() {
   if (typeof window === 'undefined') return
   const handler = () => {

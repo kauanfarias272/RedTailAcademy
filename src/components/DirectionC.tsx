@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const directionC = {
   bg: '#0e0a08',
   bgElev: '#1a120e',
