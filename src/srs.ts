@@ -1,258 +1,171 @@
 /**
- * Spaced Repetition System (SRS)
- * Implementação baseada na teoria de Stephen Krashen e técnicas de repetição espaçada
- * Similar ao algoritmo SuperMemo e Anki
+ * Spaced Repetition System (SRS) Implementation
+ * Based on SM-2 Algorithm and research by Piotr Wozniak
+ * 
+ * Intervals: 1 day, 3 days, 7 days, 14 days, 30 days, 60 days, 120 days, 240 days
  */
 
-import { LearningMistake, CardProgress } from './progress'
+import { doc, updateDoc, Timestamp } from 'firebase/firestore'
+import { db } from './firebase'
 
 export interface SRSCard {
   id: string
   itemId: string
-  type: 'phrase' | 'character' | 'chunk'
-  front: string // Hanzi/Pinyin
-  back: string // Significado/Tradução
-  level: number // 1-5 (iniciante a avançado)
-  box: number // 0-5 (Leitner system)
-  dueAt: number // Timestamp quando deve revisar
-  createdAt: number
-  reviewedAt: number
-  interval: number // Dias até próxima revisão
-  easeFactor: number // Fator de facilidade (1.3 - 2.5)
-  repetitions: number // Quantas vezes foi revisado
-  correctReviews: number
-  lastGrade: number // 0-5 (qualidade da resposta)
+  itemType: 'vocabulary' | 'phrase' | 'character' | 'chunk'
+  interval: number // days until next review
+  easeFactor: number // difficulty multiplier (starts at 2.5)
+  repetitions: number // how many times reviewed
+  nextReviewDate: number // timestamp
+  lastReviewDate: number // timestamp
+  quality: number // 0-5 rating from last review
+  correctStreak: number // consecutive correct answers
+  incorrectStreak: number // consecutive incorrect answers
+  dueDate: string // ISO date string
 }
 
-export interface DailyAnchor {
-  /** Conceitos básicos que devem estar em toda lição */
-  basicPhrase: string
-  basicCharacter: string
-  basicChunk: string
-}
+// SM-2 Algorithm constants
+const DEFAULT_EASE_FACTOR = 2.5
+const MIN_EASE_FACTOR = 1.3
+const DEFAULT_INTERVAL = 1 // Start with 1 day
+
+// Optimized intervals for language learning
+const INTERVALS_DAYS = [1, 3, 7, 14, 30, 60, 120, 240]
 
 /**
- * Algoritmo SM-2 (SuperMemo 2) adaptado
- * - Interval: dias até próxima revisão
- * - EaseFactor: quanto mais fácil, maior o intervalo
+ * Calculate next review interval using SM-2 algorithm
+ * Quality: 0 = complete blackout, 5 = perfect response
  */
-export const SM2_INITIAL = {
-  easeFactor: 2.5,
-  interval: 1,
-  repetitions: 0,
-}
+export function calculateNextInterval(
+  card: SRSCard,
+  quality: number // 0-5
+): { interval: number; easeFactor: number; nextDate: number } {
+  let easeFactor = card.easeFactor
+  let interval = card.interval
 
-export const INTERVALS = {
-  new: 1, // 1 dia
-  learning: 3, // 3 dias
-  reviewing: 7, // 7 dias
-  mastery: 14, // 14 dias
-  expert: 30, // 30 dias
-}
+  // Update ease factor based on quality
+  easeFactor = Math.max(
+    MIN_EASE_FACTOR,
+    easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
+  )
 
-/**
- * Calcula o novo intervalo baseado na resposta do usuário
- * @param card Card atual
- * @param grade Qualidade da resposta (0-5)
- * @returns Novo intervalo em dias
- */
-export function calculateNextInterval(card: SRSCard, grade: number): number {
-  if (grade < 3) {
-    // Resposta incorreta - volta ao começo
-    return INTERVALS.new
-  }
-
-  let newInterval = card.interval
-  if (card.repetitions === 0) {
-    newInterval = INTERVALS.new
+  if (quality < 3) {
+    // Failed: reset to beginning
+    interval = DEFAULT_INTERVAL
+  } else if (card.repetitions === 0) {
+    // First successful review: 1 day
+    interval = 1
   } else if (card.repetitions === 1) {
-    newInterval = INTERVALS.learning
+    // Second review: 3 days
+    interval = 3
   } else {
-    newInterval = Math.ceil(card.interval * card.easeFactor)
+    // Subsequent reviews: multiply by ease factor
+    interval = Math.round(card.interval * easeFactor)
   }
 
-  return Math.max(1, newInterval)
+  // Cap at maximum interval
+  interval = Math.min(interval, INTERVALS_DAYS[INTERVALS_DAYS.length - 1])
+
+  const nextDate = Date.now() + interval * 24 * 60 * 60 * 1000
+
+  return { interval, easeFactor, nextDate }
 }
 
 /**
- * Atualiza o fator de facilidade baseado na resposta
+ * Create a new SRS card for an item
  */
-export function calculateNewEaseFactor(card: SRSCard, grade: number): number {
-  let newEase = card.easeFactor + 0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02)
-  return Math.max(1.3, Math.min(2.5, newEase)) // Limita entre 1.3 e 2.5
-}
-
-/**
- * Calcula qual box (0-5) o card deve estar baseado no progresso
- */
-export function calculateBox(repetitions: number, correctReviews: number): number {
-  if (correctReviews === 0) return 0 // Nunca visto
-  if (correctReviews < 3) return 1 // Aprendendo
-  if (correctReviews < 7) return 2 // Revisando
-  if (correctReviews < 15) return 3 // Consolidando
-  if (correctReviews < 30) return 4 // Mastery
-  return 5 // Expert
-}
-
-/**
- * Gera cards SRS para uma lição
- * Garante que conceitos básicos são repetidos
- */
-export function generateSRSCardsForLesson(
-  lessonId: string,
-  phrases: Array<{ id: string; hanzi: string; pinyin: string; portuguese: string }>,
-  includeAnchor: boolean = true
-): SRSCard[] {
-  const cards: SRSCard[] = []
+export function createSRSCard(
+  itemId: string,
+  itemType: SRSCard['itemType']
+): SRSCard {
   const now = Date.now()
-  const baseDueAt = now + INTERVALS.new * 24 * 60 * 60 * 1000
-
-  // Adicionar âncoras (conceitos básicos de lições anteriores)
-  if (includeAnchor) {
-    const anchors: DailyAnchor[] = [
-      {
-        basicPhrase: 'ni-hao-0',
-        basicCharacter: 'ni-你',
-        basicChunk: 'chunk-greeting',
-      },
-      {
-        basicPhrase: 'xie-xie-0',
-        basicCharacter: 'xie-谢',
-        basicChunk: 'chunk-thanks',
-      },
-    ]
-
-    anchors.forEach((anchor, idx) => {
-      cards.push({
-        id: `anchor-${idx}-${lessonId}`,
-        itemId: anchor.basicPhrase,
-        type: 'phrase',
-        front: `复习: Básico da lição anterior`,
-        back: `Revisão para consolidação`,
-        level: 1,
-        box: 2,
-        dueAt: now,
-        createdAt: now - 30 * 24 * 60 * 60 * 1000, // 30 dias atrás
-        reviewedAt: now - 1 * 24 * 60 * 60 * 1000,
-        interval: INTERVALS.reviewing,
-        easeFactor: 2.0,
-        repetitions: 3,
-        correctReviews: 6,
-        lastGrade: 4,
-      })
-    })
-  }
-
-  // Criar cards para cada frase da lição
-  phrases.forEach((phrase, idx) => {
-    // Card 1: Hanzi -> Português
-    cards.push({
-      id: `card-${phrase.id}-hanzi-${lessonId}`,
-      itemId: phrase.id,
-      type: 'phrase',
-      front: phrase.hanzi,
-      back: `${phrase.pinyin}\n${phrase.portuguese}`,
-      level: 1,
-      box: 0,
-      dueAt: baseDueAt,
-      createdAt: now,
-      reviewedAt: 0,
-      interval: 0,
-      easeFactor: SM2_INITIAL.easeFactor,
-      repetitions: 0,
-      correctReviews: 0,
-      lastGrade: 0,
-    })
-
-    // Card 2: Pinyin -> Português (para pronúncia)
-    cards.push({
-      id: `card-${phrase.id}-pinyin-${lessonId}`,
-      itemId: phrase.id,
-      type: 'phrase',
-      front: phrase.pinyin,
-      back: phrase.portuguese,
-      level: 2,
-      box: 0,
-      dueAt: baseDueAt + 24 * 60 * 60 * 1000, // 1 dia depois
-      createdAt: now,
-      reviewedAt: 0,
-      interval: 0,
-      easeFactor: SM2_INITIAL.easeFactor,
-      repetitions: 0,
-      correctReviews: 0,
-      lastGrade: 0,
-    })
-
-    // Card 3: Português -> Hanzi (produção ativa)
-    if (idx < 5) {
-      // Apenas primeiras 5 para não sobrecarregar
-      cards.push({
-        id: `card-${phrase.id}-production-${lessonId}`,
-        itemId: phrase.id,
-        type: 'phrase',
-        front: phrase.portuguese,
-        back: `${phrase.hanzi}\n${phrase.pinyin}`,
-        level: 3, // Mais difícil
-        box: 0,
-        dueAt: baseDueAt + 2 * 24 * 60 * 60 * 1000, // 2 dias depois
-        createdAt: now,
-        reviewedAt: 0,
-        interval: 0,
-        easeFactor: SM2_INITIAL.easeFactor,
-        repetitions: 0,
-        correctReviews: 0,
-        lastGrade: 0,
-      })
-    }
-  })
-
-  return cards
-}
-
-/**
- * Atualiza um card SRS após revisão
- */
-export function updateSRSCard(card: SRSCard, grade: number): SRSCard {
-  const now = Date.now()
-  const newEase = calculateNewEaseFactor(card, grade)
-  const newInterval = calculateNextInterval(card, grade)
-  const newRepetitions = grade >= 3 ? card.repetitions + 1 : card.repetitions
-  const newCorrectReviews = grade >= 3 ? card.correctReviews + 1 : card.correctReviews
-  const newBox = calculateBox(newRepetitions, newCorrectReviews)
+  const tomorrow = now + 24 * 60 * 60 * 1000
 
   return {
-    ...card,
-    easeFactor: newEase,
-    interval: newInterval,
-    repetitions: newRepetitions,
-    correctReviews: newCorrectReviews,
-    box: newBox,
-    dueAt: now + newInterval * 24 * 60 * 60 * 1000,
-    reviewedAt: now,
-    lastGrade: grade,
+    id: `srs-${itemId}-${Date.now()}`,
+    itemId,
+    itemType,
+    interval: DEFAULT_INTERVAL,
+    easeFactor: DEFAULT_EASE_FACTOR,
+    repetitions: 0,
+    nextReviewDate: tomorrow,
+    lastReviewDate: now,
+    quality: 0,
+    correctStreak: 0,
+    incorrectStreak: 0,
+    dueDate: new Date(tomorrow).toISOString().split('T')[0],
   }
 }
 
 /**
- * Retorna cards que devem ser revisados hoje
+ * Get cards due for review today
  */
-export function getDueCards(cards: SRSCard[]): SRSCard[] {
-  const now = Date.now()
-  return cards.filter((card) => card.dueAt <= now).sort((a, b) => a.box - b.box)
+export function getCardsDue(cards: SRSCard[]): SRSCard[] {
+  const today = new Date().toISOString().split('T')[0]
+  return cards.filter((card) => card.dueDate <= today)
 }
 
 /**
- * Calcula estatísticas de aprendizado SRS
+ * Get review statistics
  */
-export function calculateSRSStats(cards: SRSCard[]) {
-  const now = Date.now()
-  const due = cards.filter((c) => c.dueAt <= now).length
-  const learning = cards.filter((c) => c.box === 1).length
-  const review = cards.filter((c) => c.box >= 2 && c.box <= 4).length
-  const mastery = cards.filter((c) => c.box === 5).length
-  const accuracy = cards.length > 0
-    ? (cards.reduce((sum, c) => sum + (c.correctReviews / Math.max(1, c.repetitions)), 0) / cards.length) * 100
-    : 0
+export function getReviewStats(cards: SRSCard[]) {
+  const dueToday = getCardsDue(cards).length
+  const totalCards = cards.length
+  const totalReviews = cards.reduce((sum, card) => sum + card.repetitions, 0)
+  const averageEase = (cards.reduce((sum, card) => sum + card.easeFactor, 0) / cards.length).toFixed(2)
+  const newCards = cards.filter((card) => card.repetitions === 0).length
+  const maturCards = cards.filter((card) => card.repetitions >= 3).length
 
-  return { due, learning, review, mastery, accuracy: accuracy.toFixed(1) }
+  return { dueToday, totalCards, totalReviews, averageEase, newCards, maturCards }
+}
+
+/**
+ * Update card after review
+ */
+export async function reviewSRSCard(
+  userId: string,
+  card: SRSCard,
+  quality: number, // 0-5
+  isCorrect: boolean
+): Promise<SRSCard> {
+  const { interval, easeFactor, nextDate } = calculateNextInterval(card, quality)
+
+  const updatedCard: SRSCard = {
+    ...card,
+    interval,
+    easeFactor,
+    repetitions: isCorrect ? card.repetitions + 1 : card.repetitions,
+    nextReviewDate: nextDate,
+    lastReviewDate: Date.now(),
+    quality,
+    correctStreak: isCorrect ? card.correctStreak + 1 : 0,
+    incorrectStreak: isCorrect ? 0 : card.incorrectStreak + 1,
+    dueDate: new Date(nextDate).toISOString().split('T')[0],
+  }
+
+  // Persist to Firebase
+  await updateDoc(doc(db, 'users', userId, 'srsCards', card.id), updatedCard)
+
+  return updatedCard
+}
+
+/**
+ * Calculate optimal study time based on circadian rhythm
+ * Returns true if user should study now
+ */
+export function isOptimalStudyTime(): boolean {
+  const hour = new Date().getHours()
+  // Optimal learning windows: 9-12am, 2-4pm, 7-9pm
+  const optimalHours = [9, 10, 11, 14, 15, 16, 19, 20]
+  return optimalHours.includes(hour)
+}
+
+/**
+ * Get next review card considering difficulty
+ */
+export function getNextCardPriority(cards: SRSCard[]): SRSCard | null {
+  const dueCards = getCardsDue(cards)
+  if (dueCards.length === 0) return null
+
+  // Priority: highest ease factor first (easier cards to warm up)
+  return dueCards.reduce((min, card) => (card.easeFactor < min.easeFactor ? card : min))
 }
