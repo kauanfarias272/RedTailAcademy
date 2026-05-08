@@ -68,6 +68,7 @@ export type WritingCharacter = {
   words: string[]
   strokeOrder: string[]
   strokeHints?: StrokeHint[]
+  curiosity?: string
 }
 
 export type Chunk = {
@@ -839,6 +840,7 @@ export const writingCharacters: WritingCharacter[] = [
       { x: 50, y: 22, arrow: '↙' },
       { x: 50, y: 42, arrow: '↘' },
     ],
+    curiosity: '人 parece uma pessoa caminhando: dois tracos seguram o corpo em equilibrio.',
   },
   {
     id: 'kou',
@@ -854,6 +856,7 @@ export const writingCharacters: WritingCharacter[] = [
       { x: 26, y: 25, arrow: '→' },
       { x: 26, y: 70, arrow: '→' },
     ],
+    curiosity: '口 e a ideia de boca/abertura; ele volta em palavras como porta, saida e entrada.',
   },
   {
     id: 'ni',
@@ -881,6 +884,7 @@ export const writingCharacters: WritingCharacter[] = [
       { x: 52, y: 62, arrow: '•' },
       { x: 68, y: 62, arrow: '•' },
     ],
+    curiosity: '你 junta pessoa na esquerda com 尔 na direita: e literalmente a pessoa que esta diante de voce.',
   },
   {
     id: 'hao',
@@ -906,6 +910,7 @@ export const writingCharacters: WritingCharacter[] = [
       { x: 72, y: 22, arrow: '↓' },
       { x: 58, y: 58, arrow: '→' },
     ],
+    curiosity: '好 combina mulher 女 e filho 子; na origem, a cena familiar virou a ideia de bom/bem.',
   },
   {
     id: 'zhong',
@@ -922,6 +927,7 @@ export const writingCharacters: WritingCharacter[] = [
       { x: 33, y: 60, arrow: '→' },
       { x: 50, y: 12, arrow: '↓' },
     ],
+    curiosity: '中 mostra uma linha atravessando o centro: por isso significa meio e aparece em China, 中国.',
   },
   {
     id: 'shui',
@@ -938,6 +944,7 @@ export const writingCharacters: WritingCharacter[] = [
       { x: 58, y: 42, arrow: '↘' },
       { x: 60, y: 58, arrow: '↘' },
     ],
+    curiosity: '水 nasceu como desenho de correnteza; os pontos laterais lembram agua abrindo caminho.',
   },
 ]
 

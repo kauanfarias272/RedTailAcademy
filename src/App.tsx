@@ -174,6 +174,20 @@ const writingStructureOptions = writingCharacters.map((character) => `${characte
 const FREEZE_COST = 80
 const MASCOT_SWITCH_COST = 300
 const WRITING_MIN_PATH = 220
+const MAX_LESSON_EXERCISES = 7
+const MAX_LESSON_REVIEW_EXERCISES = 3
+const FOUNDATION_REVIEW_IDS = [
+  'ni-hao',
+  'wo-hen-hao',
+  'xie-xie',
+  'wo-yao',
+  'zhe-ge',
+  'ren',
+  'zhong-guo',
+  'shi',
+  'he-shui',
+  'jin-tian',
+]
 
 type DrawPoint = {
   x: number
@@ -194,6 +208,38 @@ const writingValidationTemplates: Record<string, WritingValidationTemplate> = {
   hao: { cells: ['0-0', '0-1', '0-2', '1-1', '2-0', '2-1', '1-2', '2-2'], minWidthRatio: 0.34, minHeightRatio: 0.36, minPathLength: 190 },
   zhong: { cells: ['0-0', '1-0', '2-0', '0-1', '1-1', '2-1', '1-2'], minWidthRatio: 0.28, minHeightRatio: 0.4, minPathLength: 150 },
   shui: { cells: ['1-0', '1-1', '0-2', '1-2', '2-2'], minWidthRatio: 0.34, minHeightRatio: 0.38, minPathLength: 150 },
+}
+
+function buildLessonSession(lesson: Lesson): { phrases: Phrase[]; reviewCount: number } {
+  const phraseById = new Map(allPhrases.map((phrase) => [phrase.id, phrase]))
+  const currentLessonIndex = lessonIndexById.get(lesson.id) ?? 0
+  const currentPhraseIds = new Set(lesson.phrases.map((phrase) => phrase.id))
+  const reviewIds = [
+    ...(lesson.reviewPhraseIds ?? []),
+    ...FOUNDATION_REVIEW_IDS.filter((id) => {
+      const phrase = phraseById.get(id)
+      if (!phrase || currentPhraseIds.has(id)) return false
+      const phraseLessonIndex = lessonIndexById.get(phrase.lessonId) ?? Number.POSITIVE_INFINITY
+      return phraseLessonIndex < currentLessonIndex
+    }),
+  ]
+
+  const seenReviewIds = new Set<string>()
+  const reviewed: Phrase[] = []
+  const reviewLimit = Math.min(MAX_LESSON_REVIEW_EXERCISES, MAX_LESSON_EXERCISES - 1)
+  for (const id of reviewIds) {
+    if (seenReviewIds.has(id) || reviewed.length >= reviewLimit) continue
+    seenReviewIds.add(id)
+    const phrase = phraseById.get(id)
+    if (phrase) reviewed.push(phrase)
+  }
+
+  const newLimit = Math.max(1, MAX_LESSON_EXERCISES - reviewed.length)
+  const newPhrases = lesson.phrases.slice(0, newLimit)
+  return {
+    phrases: [...reviewed, ...newPhrases].slice(0, MAX_LESSON_EXERCISES),
+    reviewCount: reviewed.length,
+  }
 }
 
 const practiceModes: Array<{ id: PracticeMode; label: string; icon: typeof Layers3 }> = [
@@ -572,14 +618,9 @@ function App() {
   const levelProgress = Math.round((completedCount / lessons.length) * 100)
   const currentUnit = unitById.get(selectedLesson.unitId) ?? units[0]
 
-  const sessionPhrases = useMemo<Phrase[]>(() => {
-    const phraseById = new Map(allPhrases.map((p) => [p.id, p as Phrase]))
-    const reviewed = (selectedLesson.reviewPhraseIds ?? [])
-      .map((id) => phraseById.get(id))
-      .filter((p): p is Phrase => p != null)
-    return [...reviewed, ...selectedLesson.phrases]
-  }, [selectedLesson])
-  const reviewPhraseCount = selectedLesson.reviewPhraseIds?.length ?? 0
+  const lessonSession = useMemo(() => buildLessonSession(selectedLesson), [selectedLesson])
+  const sessionPhrases = lessonSession.phrases
+  const reviewPhraseCount = lessonSession.reviewCount
 
   const quizPhrase = sessionPhrases[lessonStep] ?? sessionPhrases[0]
   const options = useMemo(() => {
@@ -2000,8 +2041,9 @@ function LearnView({
   const showReward = quizLocked && isLessonRewardStep(stepIndex, stepTotal)
   const rewardKind = stepIndex + 1 === stepTotal ? 'complete' : 'checkpoint'
   const isReviewStep = stepIndex < reviewPhraseCount
+  const newPhraseTotal = Math.max(1, stepTotal - reviewPhraseCount)
   const newPhraseIndex = Math.max(1, stepIndex - reviewPhraseCount + 1)
-  const stepKindLabel = isReviewStep ? 'Revisao Anki' : `Input novo ${newPhraseIndex}/${selectedLesson.phrases.length}`
+  const stepKindLabel = isReviewStep ? 'Revisao Anki' : `Input novo ${newPhraseIndex}/${newPhraseTotal}`
   const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
   const lessonBlockedByMistakes = progress.mistakes.some((mistake) => !mistake.resolvedAt)
   const activeLessonRef = useRef<HTMLButtonElement | null>(null)
@@ -2074,6 +2116,12 @@ function LearnView({
                 literal={phrase.literal}
                 literalNote={phrase.note}
               />
+              <div className="lesson-insight">
+                <Sparkles size={14} />
+                <span>{isReviewStep ? 'Repeticao inteligente' : 'Curiosidade'}</span>
+                <p>{phrase.note}</p>
+              </div>
+              <ConnectionChips items={phraseConnectionMap[phrase.id]} />
             </div>
           </div>
 
@@ -3058,15 +3106,26 @@ function WritingView({
   const [practiceDone, setPracticeDone] = useState(false)
   const [practiceStarted, setPracticeStarted] = useState(false)
   const [showStrokeHints, setShowStrokeHints] = useState(true)
+  const [showGhostTemplate, setShowGhostTemplate] = useState(false)
 
   useFocusMode(practiceStarted && !practiceDone)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const isDrawing = useRef(false)
   const activeStroke = useRef<DrawPoint[]>([])
+  const writingAdvanceTimer = useRef<number | null>(null)
   const selectedCharacter =
     writingCharacters.find((character) => character.id === selectedId) ?? writingCharacters[0]
   const selectedOpenMistake = openMistakes.find((mistake) => mistake.itemId === selectedCharacter.id)
   const strokeHints = selectedCharacter.strokeHints ?? []
+  const selectedCharacterIndex = writingCharacters.findIndex((character) => character.id === selectedCharacter.id)
+  const nextCharacter = writingCharacters[(selectedCharacterIndex + 1) % writingCharacters.length]
+  const writingCuriosity = selectedCharacter.curiosity ?? `${selectedCharacter.character} aparece em ${selectedCharacter.words.join(', ')}.`
+
+  useEffect(() => {
+    return () => {
+      if (writingAdvanceTimer.current) window.clearTimeout(writingAdvanceTimer.current)
+    }
+  }, [])
 
   function setupCanvas() {
     const canvas = canvasRef.current
@@ -3154,9 +3213,23 @@ function WritingView({
   }
 
   function resetForCharacter() {
+    if (writingAdvanceTimer.current) window.clearTimeout(writingAdvanceTimer.current)
     resetCanvas()
     setPracticeStarted(false)
     setShowStrokeHints(true)
+    setShowGhostTemplate(false)
+  }
+
+  function switchWritingCharacter(nextId: string) {
+    if (writingAdvanceTimer.current) window.clearTimeout(writingAdvanceTimer.current)
+    setSelectedId(nextId)
+    setStrokesDrawn(0)
+    setDrawnStrokes([])
+    setValidationMessage('')
+    setPracticeDone(false)
+    setPracticeStarted(false)
+    setShowStrokeHints(true)
+    setShowGhostTemplate(false)
   }
 
   function completeWritingPractice(character: WritingCharacter) {
@@ -3167,9 +3240,13 @@ function WritingView({
       return
     }
     setPracticeDone(true)
-    setValidationMessage('Hanzi validado e erro removido da fila, se existia.')
+    setValidationMessage(`Curiosidade: ${writingCuriosity}`)
     onCompletePractice(character)
     onSpeak(character.character)
+    if (writingAdvanceTimer.current) window.clearTimeout(writingAdvanceTimer.current)
+    writingAdvanceTimer.current = window.setTimeout(() => {
+      switchWritingCharacter(nextCharacter.id)
+    }, 2600)
   }
 
   const validation = validateWritingAttempt(selectedCharacter, drawnStrokes, strokesDrawn, canvasSize)
@@ -3249,8 +3326,8 @@ function WritingView({
         ) : (
           <>
             <div className="writing-canvas-wrap">
-              <div className="writing-grid" aria-hidden="true">
-                <span>{selectedCharacter.character}</span>
+              <div className={showGhostTemplate ? 'writing-grid ghost-visible' : 'writing-grid ghost-hidden'} aria-hidden="true">
+                {showGhostTemplate && <span>{selectedCharacter.character}</span>}
               </div>
               {showStrokeHints && strokeHints.length > 0 && (
                 <div className="stroke-hint-overlay" aria-hidden="true">
@@ -3280,6 +3357,10 @@ function WritingView({
             </div>
 
             <div className="writing-controls">
+              <button type="button" onClick={() => setShowGhostTemplate((current) => !current)} title="Mostrar/esconder molde do hanzi">
+                {showGhostTemplate ? <Eraser size={18} /> : <Sparkles size={18} />}
+                {showGhostTemplate ? 'Ocultar molde' : 'Ver molde'}
+              </button>
               <button type="button" onClick={() => setShowStrokeHints((current) => !current)} title="Mostrar/esconder ordem dos tracos">
                 {showStrokeHints ? <Eraser size={18} /> : <Brush size={18} />}
                 {showStrokeHints ? 'Esconder guia' : 'Mostrar guia'}
@@ -3298,6 +3379,15 @@ function WritingView({
                 Validar
               </button>
             </div>
+            {practiceDone && (
+              <div className="writing-curiosity" role="status">
+                <Sparkles size={16} />
+                <div>
+                  <strong>Boa. Proxima letra em instantes.</strong>
+                  <p>{writingCuriosity}</p>
+                </div>
+              </div>
+            )}
             <p className={practiceDone ? 'feedback good' : (strokesDrawn > 0 && !validation.ok ? 'feedback error' : 'feedback')}>
               {practiceDone
                 ? `Treino salvo. Voce fez ${strokesDrawn} tracos.`
@@ -3317,13 +3407,7 @@ function WritingView({
               key={character.id}
               type="button"
               onClick={() => {
-                setSelectedId(character.id)
-                setStrokesDrawn(0)
-                setDrawnStrokes([])
-                setValidationMessage('')
-                setPracticeDone(false)
-                setPracticeStarted(false)
-                setShowStrokeHints(true)
+                switchWritingCharacter(character.id)
               }}
             >
               <strong>{character.character}</strong>

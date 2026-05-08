@@ -3,8 +3,13 @@
 
 App de mandarim com trilha de licoes, flashcards, treino de fala, treino de escrita hanzi, aba de estudo com memes/musicas e mascote estilo Tamagotchi.
 
-## Destaques (v0.2.14)
+## Destaques (v0.2.15)
 
+- Licoes agora têm teto real de 7 exercicios por sessao, contando revisoes Anki e input novo.
+- Mais repeticao do basico: itens de fundacao voltam no começo das licoes antes das frases novas.
+- Microanimacoes de toque, entrada e resposta deixam a UI mais fluida e menos travada.
+- Painel de pronuncia/literal ficou compacto e nao cobre mais as opcoes de resposta.
+- Escrita hanzi abre em estudo guiado, depois canvas limpo; acertou, mostra curiosidade e avanca para o proximo caractere.
 - Trilha com SRS dentro das licoes: frases antigas voltam antes do input novo para fixar memoria sem virar revisao solta.
 - Fluxo inspirado em Krashen: a aula separa "Revisao Anki" de "Input novo i+1", dando contexto compreensivel antes da cobranca.
 - Aba Treino com Anki mais completo: fila por vencimento, caixas, lapsos, previsao de intervalo e deck vivo com novos/em aprendizado/maduros.
@@ -63,6 +68,6 @@ npm run android:release
 
 Os APK/AAB versionados ficam na raiz do projeto, por exemplo:
 
-- `RedTailAcademy-v0.2.14-debug.apk`
-- `RedTailAcademy-v0.2.14-release-unsigned.apk`
-- `RedTailAcademy-v0.2.14-release.aab`
+- `RedTailAcademy-v0.2.15-debug.apk`
+- `RedTailAcademy-v0.2.15-release-unsigned.apk`
+- `RedTailAcademy-v0.2.15-release.aab`

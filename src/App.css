@@ -5797,3 +5797,212 @@ body.focus-mode .workspace {
 .writing-canvas-wrap {
   position: relative;
 }
+
+/* === v0.2.15: interaction polish, compact lesson details, cleaner writing flow === */
+
+:where(
+  button,
+  .answer-option,
+  .deck-item,
+  .lesson-open-tab,
+  .c-node,
+  .chunk-option,
+  .character-picker button,
+  .word-chips button,
+  .utility-icon,
+  .bottom-button
+) {
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease,
+    opacity 180ms ease;
+}
+
+:where(
+  button,
+  .answer-option,
+  .deck-item,
+  .lesson-open-tab,
+  .c-node,
+  .chunk-option,
+  .character-picker button,
+  .word-chips button,
+  .utility-icon,
+  .bottom-button
+):not(:disabled):active {
+  transform: translateY(1px) scale(0.985);
+  filter: brightness(1.08);
+}
+
+@keyframes c-soft-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes c-tap-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(212, 160, 74, 0.36);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(212, 160, 74, 0);
+  }
+}
+
+.lesson-panel-live .phrase-stage,
+.lesson-panel-live .quiz-block,
+.lesson-reward-card,
+.writing-board,
+.chunk-stage,
+.stroke-card {
+  animation: c-soft-enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.lesson-panel-live .answer-option:not(:disabled):active,
+.primary-action:not(:disabled):active,
+.writing-controls button:not(:disabled):active,
+.reveal-study-tabs .reveal-tab:not(:disabled):active {
+  animation: c-tap-ring 360ms ease-out;
+}
+
+.lesson-panel-live .lesson-footer {
+  position: static;
+  margin: 0;
+  padding: 10px 0 0;
+  background: transparent;
+}
+
+.lesson-panel-live {
+  padding-bottom: calc(18px + env(safe-area-inset-bottom));
+}
+
+.lesson-panel-live .phrase-stage {
+  align-items: start;
+}
+
+.lesson-panel-live .phrase-stage > div {
+  min-width: 0;
+}
+
+.lesson-panel-live .reveal-study-tabs {
+  max-width: 100%;
+  margin-top: 8px;
+}
+
+.lesson-panel-live .reveal-tab-panel {
+  max-height: 82px;
+  overflow-y: auto;
+  border-color: rgba(212, 160, 74, 0.24);
+  background: rgba(14, 10, 8, 0.24);
+  animation: c-soft-enter 180ms ease-out;
+}
+
+.lesson-panel-live .reveal-tab-panel strong {
+  font-size: 16px;
+}
+
+.lesson-insight {
+  margin-top: 9px;
+  padding: 8px 10px;
+  border: 1px solid rgba(90, 139, 106, 0.24);
+  border-radius: 9px;
+  display: grid;
+  grid-template-columns: 18px auto;
+  gap: 3px 8px;
+  background: rgba(90, 139, 106, 0.08);
+  color: var(--c-ink);
+}
+
+.lesson-insight svg {
+  grid-row: span 2;
+  color: var(--c-jade);
+  margin-top: 1px;
+}
+
+.lesson-insight span {
+  color: var(--c-jade);
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.lesson-insight p {
+  margin: 0;
+  color: rgba(245, 234, 214, 0.78);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.lesson-panel-live .connection-chips {
+  margin-top: 8px;
+  padding: 8px;
+}
+
+.writing-grid.ghost-hidden span {
+  display: none;
+}
+
+.writing-grid.ghost-visible span {
+  color: rgba(36, 31, 35, 0.09);
+}
+
+.writing-curiosity {
+  padding: 10px 12px;
+  border: 1px solid rgba(212, 160, 74, 0.36);
+  border-radius: 11px;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  align-items: start;
+  background: linear-gradient(135deg, rgba(212, 160, 74, 0.14), rgba(90, 139, 106, 0.10));
+  color: var(--c-ink);
+  animation: c-soft-enter 220ms ease-out;
+}
+
+.writing-curiosity svg {
+  color: var(--c-gold);
+  margin-top: 2px;
+}
+
+.writing-curiosity strong {
+  display: block;
+  color: #fff3d5;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.writing-curiosity p {
+  margin: 3px 0 0;
+  color: rgba(245, 234, 214, 0.78);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+@media (max-width: 560px) {
+  .lesson-panel-live .phrase-stage {
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .lesson-panel-live .phrase-stage strong {
+    font-size: clamp(30px, 11vw, 44px);
+  }
+
+  .lesson-panel-live .reveal-tab-panel {
+    max-height: 72px;
+  }
+
+  .lesson-insight {
+    padding: 7px 9px;
+  }
+}
