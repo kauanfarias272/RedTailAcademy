@@ -70,10 +70,11 @@ import {
   type LearningMistake,
   type LearningProgress,
 } from './progress'
-import { checkInactivity, onLessonComplete, onCardReview } from './mascot'
-import { MascotWidget } from './MascotWidget'
+import { checkInactivity, getMascotVariant, onLessonComplete, onCardReview, previewLessonComplete, switchEvolutionPath } from './mascot'
+import { MascotSprite, MascotWidget } from './MascotWidget'
 import { playCorrect, playLessonComplete, playLevelUp, playWrong, unlockAudioOnFirstGesture } from './sound'
 import { useFocusMode } from './focusMode'
+import { ensureStudyReminders, sendLessonCompleteNotification } from './notifications'
 import {
   CLAN_MAX_MEMBERS,
   clanXpBonus,
@@ -171,6 +172,7 @@ const chunkBlankAnswers = chunks.map((chunk) => chunk.blankAnswer)
 const writingStructureOptions = writingCharacters.map((character) => `${character.strokes} tracos com estrutura de ${character.character}`)
 
 const FREEZE_COST = 80
+const MASCOT_SWITCH_COST = 300
 const WRITING_MIN_PATH = 220
 
 type DrawPoint = {
@@ -353,6 +355,10 @@ function App() {
   const autoAdvanceTimer = useRef<number | null>(null)
   const [progress, setProgress] = useStoredProgress()
   const today = useToday()
+
+  useEffect(() => {
+    ensureStudyReminders(progress.mascot.name)
+  }, [progress.mascot.name])
 
   useEffect(() => {
     if (isLessonActive) return
@@ -613,6 +619,12 @@ function App() {
   }
 
   function completeLesson(lesson: Lesson) {
+    const wasAlreadyCompleted = progress.completedLessons.includes(lesson.id)
+    const wasBlocked = hasOpenMistakes(progress)
+    const rewardPreview = previewLessonComplete(progress.mascot, today)
+    const rewardVariant = getMascotVariant(rewardPreview.nextMascot)
+    let completionMessage = ''
+
     setProgress((current) => {
       const completedAt = Date.now()
       const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
@@ -666,6 +678,17 @@ function App() {
         mascot: updatedMascot,
       }
     })
+    if (!wasAlreadyCompleted) {
+      if (wasBlocked) {
+        completionMessage = `Parabens! +${lesson.xp} XP e +12 moedas. Corrija os erros para ${rewardVariant.name} evoluir.`
+      } else if (rewardPreview.evolved) {
+        completionMessage = `Parabens! ${rewardVariant.name} evoluiu para Nv.${rewardPreview.nextMascot.stage}. +${rewardPreview.evoXpGain} Evo XP.`
+      } else {
+        completionMessage = `Parabens! ${rewardVariant.name} ganhou +${rewardPreview.evoXpGain} Evo XP, +${lesson.xp} XP e +12 moedas.`
+      }
+      flashToast('good', completionMessage, 3400)
+      void sendLessonCompleteNotification(completionMessage)
+    }
     setQuizChoice('')
     setQuizLocked(false)
   }
@@ -718,12 +741,12 @@ function App() {
     setActiveTab('practice')
   }
 
-  function flashToast(kind: 'good' | 'bad', text: string) {
+  function flashToast(kind: 'good' | 'bad', text: string, duration = 1500) {
     const key = Date.now()
     setCelebrate({ kind, text, key })
     window.setTimeout(() => {
       setCelebrate((current) => (current && current.key === key ? null : current))
-    }, 1500)
+    }, duration)
   }
 
   function chooseQuizAnswer(choice: string) {
@@ -1479,11 +1502,24 @@ function App() {
           <MascotWidget
             mascot={progress.mascot}
             blockedByMistakes={unresolvedMistakes.length}
+            userLevel={userLevel}
+            coins={progress.coins}
+            switchCost={MASCOT_SWITCH_COST}
             onRename={(name) =>
               setProgress((current) => ({
                 ...current,
                 mascot: { ...current.mascot, name },
               }))
+            }
+            onSwitchPath={() =>
+              setProgress((current) => {
+                if (progressLevel(current.xp) < 10 || current.coins < MASCOT_SWITCH_COST) return current
+                return {
+                  ...current,
+                  coins: current.coins - MASCOT_SWITCH_COST,
+                  mascot: switchEvolutionPath(current.mascot),
+                }
+              })
             }
           />
         )}
@@ -1967,6 +2003,7 @@ function LearnView({
   const newPhraseIndex = Math.max(1, stepIndex - reviewPhraseCount + 1)
   const stepKindLabel = isReviewStep ? 'Revisao Anki' : `Input novo ${newPhraseIndex}/${selectedLesson.phrases.length}`
   const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
+  const lessonBlockedByMistakes = progress.mistakes.some((mistake) => !mistake.resolvedAt)
   const activeLessonRef = useRef<HTMLButtonElement | null>(null)
   const selectedAccess = lessonAccess(selectedLesson.id, progress, currentTime)
   const startLabel = selectedAccess.kind === 'review' ? 'Revisar licao' : 'Iniciar licao'
@@ -2087,6 +2124,9 @@ function LearnView({
               stats={lessonStats}
               stepIndex={stepIndex}
               stepTotal={stepTotal}
+              mascot={progress.mascot}
+              alreadyCompleted={completedLessonSet.has(selectedLesson.id)}
+              blockedByMistakes={lessonBlockedByMistakes}
               onContinue={onAdvanceNow}
             />
           ) : (
@@ -2212,6 +2252,9 @@ function LessonRewardCard({
   stats,
   stepIndex,
   stepTotal,
+  mascot,
+  alreadyCompleted,
+  blockedByMistakes,
   onContinue,
 }: {
   kind: 'checkpoint' | 'complete'
@@ -2219,25 +2262,38 @@ function LessonRewardCard({
   stats: LessonRunStats
   stepIndex: number
   stepTotal: number
+  mascot: LearningProgress['mascot']
+  alreadyCompleted: boolean
+  blockedByMistakes: boolean
   onContinue: () => void
 }) {
   const accuracy = stats.attempts > 0 ? Math.round((stats.correct / stats.attempts) * 100) : 0
   const isComplete = kind === 'complete'
+  const rewardPreview = previewLessonComplete(mascot, new Date().toISOString().slice(0, 10))
+  const rewardMascot = isComplete && !alreadyCompleted && !blockedByMistakes ? rewardPreview.nextMascot : mascot
+  const rewardVariant = getMascotVariant(rewardMascot)
+  const completeTitle = rewardPreview.evolved
+    ? `${rewardVariant.name} evoluiu para o nivel ${rewardPreview.nextMascot.stage}.`
+    : `${rewardVariant.name} ganhou forca.`
 
   return (
     <section className={isComplete ? 'lesson-reward-card complete' : 'lesson-reward-card'} aria-label={isComplete ? 'Licao concluida' : 'Checkpoint'}>
       <div className="lesson-reward-art" aria-hidden="true">
-        <div className="reward-koi">
-          <span className="reward-koi-eye left"></span>
-          <span className="reward-koi-eye right"></span>
-          <span className="reward-koi-tail"></span>
-        </div>
+        <MascotSprite mascot={rewardMascot} className="reward-mascot-sprite" />
       </div>
 
       <div className="lesson-reward-copy">
         <p className="eyebrow">{isComplete ? 'Licao concluida' : `Checkpoint ${stepIndex + 1}/${stepTotal}`}</p>
-        <h3>{isComplete ? 'Boa. Esse tema entrou no seu caminho.' : 'Respira um pouco. Voce esta indo bem.'}</h3>
-        <span>{lesson.focus}</span>
+        <h3>
+          {isComplete
+            ? alreadyCompleted
+              ? 'Revisao completa. A memoria ficou mais firme.'
+              : blockedByMistakes
+              ? 'Parabens. Recompensa recebida; evolucao libera ao corrigir erros.'
+              : completeTitle
+            : 'Respira um pouco. Seu mascote continua com voce.'}
+        </h3>
+        <span>{isComplete ? `${rewardVariant.name} · ${rewardVariant.trait}` : lesson.focus}</span>
       </div>
 
       <div className="lesson-reward-stats" aria-label="Resumo do progresso">
@@ -2249,6 +2305,12 @@ function LessonRewardCard({
           <span>{isComplete ? 'XP' : 'Acertos'}</span>
           <strong>{isComplete ? `+${lesson.xp}` : `${stats.correct}/${stats.attempts}`}</strong>
         </div>
+        {isComplete && (
+          <div>
+            <span>Evo XP</span>
+            <strong>{alreadyCompleted || blockedByMistakes ? '+0' : `+${rewardPreview.evoXpGain}`}</strong>
+          </div>
+        )}
       </div>
 
       <button className="primary-action lesson-reward-action" type="button" onClick={onContinue}>

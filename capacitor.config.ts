@@ -9,6 +9,9 @@ const config: CapacitorConfig = {
       skipNativeAuth: true,
       providers: ['google.com'],
     },
+    LocalNotifications: {
+      iconColor: '#B92732',
+    },
   },
 };
 

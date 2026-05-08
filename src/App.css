@@ -5229,7 +5229,7 @@ body,
 
 .lesson-reward-art {
   position: relative;
-  min-height: 82px;
+  min-height: 120px;
   border-radius: 9px;
   display: grid;
   place-items: center;
@@ -5237,6 +5237,18 @@ body,
   background:
     radial-gradient(circle at 50% 58%, rgba(100, 191, 233, 0.34), transparent 35%),
     linear-gradient(180deg, rgba(245, 234, 214, 0.18), rgba(245, 234, 214, 0.05));
+}
+
+.reward-mascot-sprite {
+  width: min(180px, 68vw);
+  height: 118px;
+  display: grid;
+  place-items: center;
+}
+
+.reward-mascot-sprite .koi-svg {
+  width: 100%;
+  height: 100%;
 }
 
 .reward-koi {
@@ -5320,7 +5332,7 @@ body,
 
 .lesson-reward-stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 8px;
 }
 

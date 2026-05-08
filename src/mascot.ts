@@ -1,13 +1,13 @@
 /**
  * Mascot Evolution System - RedTail Academy
  *
- * The pet is now a Koi -> Dragon path only. The older Peng route is
- * normalized back into the dragon journey so saved players keep progress
- * without carrying an alternate evolution line.
+ * The mascot can follow two mythic routes:
+ * - Dragon: koi -> dragon, complete at level 8.
+ * - Peng: fish -> hybrid -> bird -> final Peng, complete at level 10.
  */
 
-export type EvolutionStage = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
-export type EvolutionPath = 'dragon'
+export type EvolutionStage = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
+export type EvolutionPath = 'dragon' | 'peng'
 
 export type KoiVariantId =
   | 'cheng-long'
@@ -47,94 +47,119 @@ export type KoiVariantId =
   | 'xu-gou'
   | 'hai-zhu'
 
-export interface KoiVariant {
-  id: KoiVariantId
+export type PengVariantId = 'peng-koi' | 'peng-arowana' | 'peng-dourado' | 'peng-lutador' | 'peng-borboleta'
+
+export interface MascotVariant {
+  id: KoiVariantId | PengVariantId
   hanzi: string
   name: string
   pinyin: string
   trait: string
   color: string
   accent: string
+  path: EvolutionPath
 }
 
 export interface MascotState {
-  /** Current evolution stage (1 = classic koi, 8 = complete dragon) */
+  /** Current evolution stage. Dragon caps at 8, Peng caps at 10. */
   stage: EvolutionStage
-  /** Total lessons completed (cumulative, never resets) */
+  /** Total lessons completed (cumulative, never resets). */
   lessonsCompleted: number
-  /** Current evolution XP - used for stage thresholds */
+  /** Current evolution XP - used for stage thresholds. */
   evoXp: number
-  /** ISO date string of last activity */
+  /** ISO date string of last activity. */
   lastActiveDate: string
-  /** How many days without study in a row */
+  /** How many days without study in a row. */
   inactiveDays: number
-  /** Name chosen by the user */
+  /** Name chosen by the user. */
   name: string
-  /** Accessories the mascot has earned */
+  /** Accessories the mascot has earned. */
   accessories: string[]
-  /** Current mood based on activity */
+  /** Current mood based on activity. */
   mood: MascotMood
-  /** Animation state */
+  /** Animation state. */
   animation: MascotAnimation
-  /** Legacy-safe destiny. Always dragon now. */
+  /** Evolution destiny: dragon or Peng. */
   evolutionPath: EvolutionPath
-  /** Visual/personality line from the Koi companion chart. */
+  /** Dragon-route visual/personality line. */
   koiVariantId: KoiVariantId
+  /** Peng-route fish family from the companion chart. */
+  pengVariantId: PengVariantId
 }
 
 export type MascotMood = 'happy' | 'excited' | 'neutral' | 'sad' | 'sleepy'
 export type MascotAnimation = 'idle' | 'celebrate' | 'evolve' | 'devolve' | 'sleep'
 
-export const KOI_VARIANTS: KoiVariant[] = [
-  { id: 'cheng-long', hanzi: '成龙', name: 'Cheng Long', pinyin: 'Cheng Long', trait: 'acao e carisma', color: '#2d95ff', accent: '#64d3ff' },
-  { id: 'li-xiaolong', hanzi: '李小龙', name: 'Li Xiaolong', pinyin: 'Li Xiaolong', trait: 'foco e disciplina', color: '#f25a2e', accent: '#ffc04d' },
-  { id: 'hua-mulan', hanzi: '花木兰', name: 'Hua Mulan', pinyin: 'Hua Mulan', trait: 'coragem e honra', color: '#d72e28', accent: '#fff0dc' },
-  { id: 'sun-wukong', hanzi: '孙悟空', name: 'Sun Wukong', pinyin: 'Sun Wukong', trait: 'travessura e sabedoria', color: '#dca62c', accent: '#fff2a8' },
-  { id: 'bai-long', hanzi: '白龙', name: 'Bai Long', pinyin: 'Bai Long', trait: 'poder e misterio', color: '#121318', accent: '#f0c46a' },
-  { id: 'taiyi-zhenren', hanzi: '太乙真人', name: 'Taiyi Zhenren', pinyin: 'Taiyi Zhenren', trait: 'cura e paciencia', color: '#f5f1e8', accent: '#c49b55' },
-  { id: 'zhang-yimou', hanzi: '张艺谋', name: 'Zhang Yimou', pinyin: 'Zhang Yimou', trait: 'visao e estrategia', color: '#f4f0df', accent: '#171717' },
-  { id: 'nezha', hanzi: '哪吒', name: 'Nezha', pinyin: 'Nezha', trait: 'determinacao', color: '#ff7d12', accent: '#191919' },
-  { id: 'xi-shi', hanzi: '西施', name: 'Xi Shi', pinyin: 'Xi Shi', trait: 'beleza e graca', color: '#efe7d8', accent: '#c8a774' },
-  { id: 'diaochan', hanzi: '貂蝉', name: 'Diaochan', pinyin: 'Diaochan', trait: 'encanto e inteligencia', color: '#e53c2f', accent: '#fff7ea' },
-  { id: 'zhuangzi', hanzi: '庄子', name: 'Zhuangzi', pinyin: 'Zhuangzi', trait: 'liberdade e filosofia', color: '#c59b55', accent: '#f5d47a' },
-  { id: 'mozi', hanzi: '墨子', name: 'Mozi', pinyin: 'Mozi', trait: 'logica e defesa', color: '#69717c', accent: '#1f2329' },
-  { id: 'guan-yu', hanzi: '关羽', name: 'Guan Yu', pinyin: 'Guan Yu', trait: 'lealdade e coragem', color: '#bf6b19', accent: '#ff8c25' },
-  { id: 'han-xin', hanzi: '韩信', name: 'Han Xin', pinyin: 'Han Xin', trait: 'estrategia e paciencia', color: '#f7f4e8', accent: '#1b1b1b' },
-  { id: 'yang-guifei', hanzi: '杨贵妃', name: 'Yang Guifei', pinyin: 'Yang Guifei', trait: 'elegancia e talento', color: '#dfb84d', accent: '#fff0b8' },
-  { id: 'change', hanzi: '嫦娥', name: "Chang'e", pinyin: "Chang'e", trait: 'pureza e misterio', color: '#f08aa8', accent: '#ffd5e0' },
-  { id: 'zixia', hanzi: '紫霞', name: 'Zixia', pinyin: 'Zixia', trait: 'sonhos e romance', color: '#6c25cf', accent: '#b97bff' },
-  { id: 'qingluan', hanzi: '青鸾', name: 'Qingluan', pinyin: 'Qingluan', trait: 'sorte e harmonia', color: '#1fb6a5', accent: '#7ff7e5' },
-  { id: 'xinghe', hanzi: '星河', name: 'Xinghe', pinyin: 'Xinghe', trait: 'calma e profundidade', color: '#064dcc', accent: '#49b8ff' },
-  { id: 'caihong', hanzi: '彩虹', name: 'Caihong', pinyin: 'Caihong', trait: 'alegria e esperanca', color: '#ffb32e', accent: '#20d6b5' },
-  { id: 'yexingzhe', hanzi: '夜行者', name: 'Yexingzhe', pinyin: 'Yexingzhe', trait: 'agilidade e foco', color: '#221036', accent: '#8f46ff' },
-  { id: 'jinlin', hanzi: '金鳞', name: 'Jinlin', pinyin: 'Jinlin', trait: 'riqueza e prosperidade', color: '#f0c35a', accent: '#fff4b2' },
-  { id: 'chiyan', hanzi: '赤焰', name: 'Chiyan', pinyin: 'Chiyan', trait: 'paixao e energia', color: '#e72d13', accent: '#ff9d3d' },
-  { id: 'xuanbing', hanzi: '玄冰', name: 'Xuanbing', pinyin: 'Xuanbing', trait: 'calma e resistencia', color: '#cceeff', accent: '#86d9ff' },
-  { id: 'zi-shu', hanzi: '子鼠', name: 'Zi Shu', pinyin: 'Zi Shu', trait: 'engenho flexivel', color: '#ffd8d8', accent: '#ff9db0' },
-  { id: 'chou-niu', hanzi: '丑牛', name: 'Chou Niu', pinyin: 'Chou Niu', trait: 'constancia forte', color: '#c99125', accent: '#f3d27c' },
-  { id: 'yin-hu', hanzi: '寅虎', name: 'Yin Hu', pinyin: 'Yin Hu', trait: 'impulso valente', color: '#dd8118', accent: '#2b1708' },
-  { id: 'mao-tu', hanzi: '卯兔', name: 'Mao Tu', pinyin: 'Mao Tu', trait: 'gentileza rapida', color: '#ffd8dc', accent: '#ff93a5' },
-  { id: 'chen-long', hanzi: '辰龙', name: 'Chen Long', pinyin: 'Chen Long', trait: 'pressagio auspicioso', color: '#62b842', accent: '#baf2a2' },
-  { id: 'si-she', hanzi: '巳蛇', name: 'Si She', pinyin: 'Si She', trait: 'sabedoria quieta', color: '#159f91', accent: '#82ffe8' },
-  { id: 'wu-ma', hanzi: '午马', name: 'Wu Ma', pinyin: 'Wu Ma', trait: 'energia livre', color: '#d92f14', accent: '#ff8c32' },
-  { id: 'wei-yang', hanzi: '未羊', name: 'Wei Yang', pinyin: 'Wei Yang', trait: 'ternura firme', color: '#efe5cf', accent: '#c9a66b' },
-  { id: 'shen-hou', hanzi: '申猴', name: 'Shen Hou', pinyin: 'Shen Hou', trait: 'criatividade esperta', color: '#b66d27', accent: '#f5b66e' },
-  { id: 'you-ji', hanzi: '酉鸡', name: 'You Ji', pinyin: 'You Ji', trait: 'precisao no tempo', color: '#e2382d', accent: '#fff3df' },
-  { id: 'xu-gou', hanzi: '戌狗', name: 'Xu Gou', pinyin: 'Xu Gou', trait: 'lealdade alerta', color: '#c79a4e', accent: '#f0d08e' },
-  { id: 'hai-zhu', hanzi: '亥猪', name: 'Hai Zhu', pinyin: 'Hai Zhu', trait: 'alegria abundante', color: '#f2a2b2', accent: '#ffd2dc' },
+export const KOI_VARIANTS: MascotVariant[] = [
+  { id: 'cheng-long', hanzi: '成龙', name: 'Cheng Long', pinyin: 'Cheng Long', trait: 'acao e carisma', color: '#2d95ff', accent: '#64d3ff', path: 'dragon' },
+  { id: 'li-xiaolong', hanzi: '李小龙', name: 'Li Xiaolong', pinyin: 'Li Xiaolong', trait: 'foco e disciplina', color: '#f25a2e', accent: '#ffc04d', path: 'dragon' },
+  { id: 'hua-mulan', hanzi: '花木兰', name: 'Hua Mulan', pinyin: 'Hua Mulan', trait: 'coragem e honra', color: '#d72e28', accent: '#fff0dc', path: 'dragon' },
+  { id: 'sun-wukong', hanzi: '孙悟空', name: 'Sun Wukong', pinyin: 'Sun Wukong', trait: 'travessura e sabedoria', color: '#dca62c', accent: '#fff2a8', path: 'dragon' },
+  { id: 'bai-long', hanzi: '白龙', name: 'Bai Long', pinyin: 'Bai Long', trait: 'poder e misterio', color: '#121318', accent: '#f0c46a', path: 'dragon' },
+  { id: 'taiyi-zhenren', hanzi: '太乙真人', name: 'Taiyi Zhenren', pinyin: 'Taiyi Zhenren', trait: 'cura e paciencia', color: '#f5f1e8', accent: '#c49b55', path: 'dragon' },
+  { id: 'zhang-yimou', hanzi: '张艺谋', name: 'Zhang Yimou', pinyin: 'Zhang Yimou', trait: 'visao e estrategia', color: '#f4f0df', accent: '#171717', path: 'dragon' },
+  { id: 'nezha', hanzi: '哪吒', name: 'Nezha', pinyin: 'Nezha', trait: 'determinacao', color: '#ff7d12', accent: '#191919', path: 'dragon' },
+  { id: 'xi-shi', hanzi: '西施', name: 'Xi Shi', pinyin: 'Xi Shi', trait: 'beleza e graca', color: '#efe7d8', accent: '#c8a774', path: 'dragon' },
+  { id: 'diaochan', hanzi: '貂蝉', name: 'Diaochan', pinyin: 'Diaochan', trait: 'encanto e inteligencia', color: '#e53c2f', accent: '#fff7ea', path: 'dragon' },
+  { id: 'zhuangzi', hanzi: '庄子', name: 'Zhuangzi', pinyin: 'Zhuangzi', trait: 'liberdade e filosofia', color: '#c59b55', accent: '#f5d47a', path: 'dragon' },
+  { id: 'mozi', hanzi: '墨子', name: 'Mozi', pinyin: 'Mozi', trait: 'logica e defesa', color: '#69717c', accent: '#1f2329', path: 'dragon' },
+  { id: 'guan-yu', hanzi: '关羽', name: 'Guan Yu', pinyin: 'Guan Yu', trait: 'lealdade e coragem', color: '#bf6b19', accent: '#ff8c25', path: 'dragon' },
+  { id: 'han-xin', hanzi: '韩信', name: 'Han Xin', pinyin: 'Han Xin', trait: 'estrategia e paciencia', color: '#f7f4e8', accent: '#1b1b1b', path: 'dragon' },
+  { id: 'yang-guifei', hanzi: '杨贵妃', name: 'Yang Guifei', pinyin: 'Yang Guifei', trait: 'elegancia e talento', color: '#dfb84d', accent: '#fff0b8', path: 'dragon' },
+  { id: 'change', hanzi: '嫦娥', name: "Chang'e", pinyin: "Chang'e", trait: 'pureza e misterio', color: '#f08aa8', accent: '#ffd5e0', path: 'dragon' },
+  { id: 'zixia', hanzi: '紫霞', name: 'Zixia', pinyin: 'Zixia', trait: 'sonhos e romance', color: '#6c25cf', accent: '#b97bff', path: 'dragon' },
+  { id: 'qingluan', hanzi: '青鸾', name: 'Qingluan', pinyin: 'Qingluan', trait: 'sorte e harmonia', color: '#1fb6a5', accent: '#7ff7e5', path: 'dragon' },
+  { id: 'xinghe', hanzi: '星河', name: 'Xinghe', pinyin: 'Xinghe', trait: 'calma e profundidade', color: '#064dcc', accent: '#49b8ff', path: 'dragon' },
+  { id: 'caihong', hanzi: '彩虹', name: 'Caihong', pinyin: 'Caihong', trait: 'alegria e esperanca', color: '#ffb32e', accent: '#20d6b5', path: 'dragon' },
+  { id: 'yexingzhe', hanzi: '夜行者', name: 'Yexingzhe', pinyin: 'Yexingzhe', trait: 'agilidade e foco', color: '#221036', accent: '#8f46ff', path: 'dragon' },
+  { id: 'jinlin', hanzi: '金鳞', name: 'Jinlin', pinyin: 'Jinlin', trait: 'riqueza e prosperidade', color: '#f0c35a', accent: '#fff4b2', path: 'dragon' },
+  { id: 'chiyan', hanzi: '赤焰', name: 'Chiyan', pinyin: 'Chiyan', trait: 'paixao e energia', color: '#e72d13', accent: '#ff9d3d', path: 'dragon' },
+  { id: 'xuanbing', hanzi: '玄冰', name: 'Xuanbing', pinyin: 'Xuanbing', trait: 'calma e resistencia', color: '#cceeff', accent: '#86d9ff', path: 'dragon' },
+  { id: 'zi-shu', hanzi: '子鼠', name: 'Zi Shu', pinyin: 'Zi Shu', trait: 'engenho flexivel', color: '#ffd8d8', accent: '#ff9db0', path: 'dragon' },
+  { id: 'chou-niu', hanzi: '丑牛', name: 'Chou Niu', pinyin: 'Chou Niu', trait: 'constancia forte', color: '#c99125', accent: '#f3d27c', path: 'dragon' },
+  { id: 'yin-hu', hanzi: '寅虎', name: 'Yin Hu', pinyin: 'Yin Hu', trait: 'impulso valente', color: '#dd8118', accent: '#2b1708', path: 'dragon' },
+  { id: 'mao-tu', hanzi: '卯兔', name: 'Mao Tu', pinyin: 'Mao Tu', trait: 'gentileza rapida', color: '#ffd8dc', accent: '#ff93a5', path: 'dragon' },
+  { id: 'chen-long', hanzi: '辰龙', name: 'Chen Long', pinyin: 'Chen Long', trait: 'pressagio auspicioso', color: '#62b842', accent: '#baf2a2', path: 'dragon' },
+  { id: 'si-she', hanzi: '巳蛇', name: 'Si She', pinyin: 'Si She', trait: 'sabedoria quieta', color: '#159f91', accent: '#82ffe8', path: 'dragon' },
+  { id: 'wu-ma', hanzi: '午马', name: 'Wu Ma', pinyin: 'Wu Ma', trait: 'energia livre', color: '#d92f14', accent: '#ff8c32', path: 'dragon' },
+  { id: 'wei-yang', hanzi: '未羊', name: 'Wei Yang', pinyin: 'Wei Yang', trait: 'ternura firme', color: '#efe5cf', accent: '#c9a66b', path: 'dragon' },
+  { id: 'shen-hou', hanzi: '申猴', name: 'Shen Hou', pinyin: 'Shen Hou', trait: 'criatividade esperta', color: '#b66d27', accent: '#f5b66e', path: 'dragon' },
+  { id: 'you-ji', hanzi: '酉鸡', name: 'You Ji', pinyin: 'You Ji', trait: 'precisao no tempo', color: '#e2382d', accent: '#fff3df', path: 'dragon' },
+  { id: 'xu-gou', hanzi: '戌狗', name: 'Xu Gou', pinyin: 'Xu Gou', trait: 'lealdade alerta', color: '#c79a4e', accent: '#f0d08e', path: 'dragon' },
+  { id: 'hai-zhu', hanzi: '亥猪', name: 'Hai Zhu', pinyin: 'Hai Zhu', trait: 'alegria abundante', color: '#f2a2b2', accent: '#ffd2dc', path: 'dragon' },
 ]
 
-const VARIANT_IDS = KOI_VARIANTS.map((variant) => variant.id)
+export const PENG_VARIANTS: MascotVariant[] = [
+  { id: 'peng-koi', hanzi: '锦鲤', name: 'Koi', pinyin: 'Jinli', trait: 'equilibrio', color: '#f7f2e7', accent: '#c92828', path: 'peng' },
+  { id: 'peng-arowana', hanzi: '龙鱼', name: 'Arowana', pinyin: 'Longyu', trait: 'forca', color: '#b92c1b', accent: '#ff7f3b', path: 'peng' },
+  { id: 'peng-dourado', hanzi: '金鱼', name: 'Dourado', pinyin: 'Jinyu', trait: 'riqueza', color: '#f0b02e', accent: '#fff1a8', path: 'peng' },
+  { id: 'peng-lutador', hanzi: '斗鱼', name: 'Lutador', pinyin: 'Douyu', trait: 'coragem', color: '#0d6dcc', accent: '#e92e4d', path: 'peng' },
+  { id: 'peng-borboleta', hanzi: '蝶鱼', name: 'Borboleta', pinyin: 'Dieyu', trait: 'leveza', color: '#7a3ed4', accent: '#d0a7ff', path: 'peng' },
+]
 
-export function getKoiVariant(id?: string): KoiVariant {
+const KOI_VARIANT_IDS = KOI_VARIANTS.map((variant) => variant.id as KoiVariantId)
+const PENG_VARIANT_IDS = PENG_VARIANTS.map((variant) => variant.id as PengVariantId)
+
+export function getKoiVariant(id?: string): MascotVariant {
   return KOI_VARIANTS.find((variant) => variant.id === id) ?? KOI_VARIANTS[0]
 }
 
-export function randomKoiVariantId(): KoiVariantId {
-  return VARIANT_IDS[Math.floor(Math.random() * VARIANT_IDS.length)]
+export function getPengVariant(id?: string): MascotVariant {
+  return PENG_VARIANTS.find((variant) => variant.id === id) ?? PENG_VARIANTS[0]
 }
 
-/** Thresholds: how many evoXP points needed to reach each stage */
+export function getMascotVariant(state: Pick<MascotState, 'evolutionPath' | 'koiVariantId' | 'pengVariantId'>): MascotVariant {
+  return state.evolutionPath === 'peng' ? getPengVariant(state.pengVariantId) : getKoiVariant(state.koiVariantId)
+}
+
+export function randomKoiVariantId(): KoiVariantId {
+  return KOI_VARIANT_IDS[Math.floor(Math.random() * KOI_VARIANT_IDS.length)]
+}
+
+export function randomPengVariantId(): PengVariantId {
+  return PENG_VARIANT_IDS[Math.floor(Math.random() * PENG_VARIANT_IDS.length)]
+}
+
 export const STAGE_THRESHOLDS: Record<EvolutionStage, number> = {
   1: 0,
   2: 30,
@@ -144,16 +169,16 @@ export const STAGE_THRESHOLDS: Record<EvolutionStage, number> = {
   6: 440,
   7: 650,
   8: 920,
+  9: 1260,
+  10: 1680,
 }
 
-/** Descriptions for the Koi -> Dragon journey */
-export const STAGE_INFO_DRAGON: Record<EvolutionStage, {
-  name: string
-  title: string
-  description: string
-  emoji: string
-  color: string
-}> = {
+export const MAX_STAGE_BY_PATH: Record<EvolutionPath, EvolutionStage> = {
+  dragon: 8,
+  peng: 10,
+}
+
+export const STAGE_INFO_DRAGON: Record<Exclude<EvolutionStage, 9 | 10>, StageInfo> = {
   1: {
     name: 'Koi companheiro',
     title: 'Koi nivel 1 - forma classica',
@@ -212,12 +237,38 @@ export const STAGE_INFO_DRAGON: Record<EvolutionStage, {
   },
 }
 
-export function getStageInfo(stage: EvolutionStage, _path: EvolutionPath = 'dragon') {
-  return STAGE_INFO_DRAGON[stage] ?? STAGE_INFO_DRAGON[1]
+export const STAGE_INFO_PENG: Record<EvolutionStage, StageInfo> = {
+  1: { name: 'Filhote Peng', title: 'Peng nivel 1 - filhote', description: 'Peixe pequeno com potencial para cruzar do rio ao ceu.', emoji: '鱼', color: '#64bfe9' },
+  2: { name: 'Peixe desperto', title: 'Peng nivel 2 - cauda firme', description: 'A cauda fica mais forte e o primeiro habito de estudo aparece.', emoji: '鲤', color: '#4aa7f0' },
+  3: { name: 'Peixe veloz', title: 'Peng nivel 3 - corpo definido', description: 'O corpo ganha forma e memorias antigas voltam mais rapido.', emoji: '鳞', color: '#3e8fe0' },
+  4: { name: 'Peixe resiliente', title: 'Peng nivel 4 - nadadeiras longas', description: 'As nadadeiras sustentam treinos maiores e revisoes mais espacadas.', emoji: '涛', color: '#5a8b6a' },
+  5: { name: 'Peixe ascendente', title: 'Peng nivel 5 - energia alta', description: 'O mascote sente o chamado do ar, mas ainda precisa de constancia.', emoji: '跃', color: '#d4a04a' },
+  6: { name: 'Peixe mistico', title: 'Peng nivel 6 - espiral de poder', description: 'O corpo comeca a curvar como criatura lendaria.', emoji: '玄', color: '#f39c12' },
+  7: { name: 'Peixe celeste', title: 'Peng nivel 7 - pre-hibrido', description: 'Escamas e cauda anunciam a virada para o ceu.', emoji: '星', color: '#d94b32' },
+  8: { name: 'Hibrido Peng', title: 'Peng nivel 8 - hibrido', description: 'Peixe e passaro dividem o mesmo corpo. A transformacao e real.', emoji: '羽', color: '#c7d7ff' },
+  9: { name: 'Passaro Peng', title: 'Peng nivel 9 - passaro', description: 'As asas dominam. Agora o estudo sobe como corrente termica.', emoji: '鹏', color: '#8cc8ff' },
+  10: { name: 'Peng final', title: 'Peng nivel 10 - forma final', description: 'Forma final Peng: leveza, voo e memoria consolidada.', emoji: '天', color: '#f1c40f' },
 }
 
-/** Accessories earned at each evolution stage */
-export const STAGE_ACCESSORIES_DRAGON: Record<EvolutionStage, string[]> = {
+type StageInfo = {
+  name: string
+  title: string
+  description: string
+  emoji: string
+  color: string
+}
+
+export function maxStageForPath(path: EvolutionPath): EvolutionStage {
+  return MAX_STAGE_BY_PATH[path]
+}
+
+export function getStageInfo(stage: EvolutionStage, path: EvolutionPath = 'dragon'): StageInfo {
+  return path === 'peng'
+    ? STAGE_INFO_PENG[normalizeStage(stage, 'peng')]
+    : STAGE_INFO_DRAGON[normalizeStage(stage, 'dragon') as Exclude<EvolutionStage, 9 | 10>]
+}
+
+export const STAGE_ACCESSORIES_DRAGON: Record<Exclude<EvolutionStage, 9 | 10>, string[]> = {
   1: [],
   2: ['tail-glow'],
   3: ['long-fins'],
@@ -228,8 +279,23 @@ export const STAGE_ACCESSORIES_DRAGON: Record<EvolutionStage, string[]> = {
   8: ['golden-whiskers', 'dragon-horns', 'celestial-crown', 'cloud-trail', 'dragon-aura'],
 }
 
-export function getStageAccessories(stage: EvolutionStage, _path: EvolutionPath = 'dragon') {
-  return STAGE_ACCESSORIES_DRAGON[stage] ?? []
+export const STAGE_ACCESSORIES_PENG: Record<EvolutionStage, string[]> = {
+  1: [],
+  2: ['tail-glow'],
+  3: ['long-fins'],
+  4: ['wide-fins'],
+  5: ['sky-call'],
+  6: ['spiral-body'],
+  7: ['wind-scales'],
+  8: ['wing-buds', 'wind-aura'],
+  9: ['peng-wings', 'wind-aura'],
+  10: ['peng-wings', 'celestial-crown', 'galaxy-trail', 'wind-aura'],
+}
+
+export function getStageAccessories(stage: EvolutionStage, path: EvolutionPath = 'dragon') {
+  return path === 'peng'
+    ? STAGE_ACCESSORIES_PENG[normalizeStage(stage, 'peng')]
+    : STAGE_ACCESSORIES_DRAGON[normalizeStage(stage, 'dragon') as Exclude<EvolutionStage, 9 | 10>]
 }
 
 export const defaultMascotState: MascotState = {
@@ -242,97 +308,111 @@ export const defaultMascotState: MascotState = {
   accessories: [],
   mood: 'neutral',
   animation: 'idle',
-  evolutionPath: 'dragon',
+  evolutionPath: Math.random() > 0.5 ? 'dragon' : 'peng',
   koiVariantId: randomKoiVariantId(),
+  pengVariantId: randomPengVariantId(),
 }
 
 export function normalizeMascotState(input: Partial<MascotState> | undefined): MascotState {
-  const stage = normalizeStage(input?.stage)
-  const koiVariantId = VARIANT_IDS.includes(input?.koiVariantId as KoiVariantId)
+  const evolutionPath: EvolutionPath = input?.evolutionPath === 'peng' ? 'peng' : 'dragon'
+  const stage = normalizeStage(input?.stage, evolutionPath)
+  const koiVariantId = KOI_VARIANT_IDS.includes(input?.koiVariantId as KoiVariantId)
     ? (input?.koiVariantId as KoiVariantId)
     : defaultMascotState.koiVariantId
+  const pengVariantId = PENG_VARIANT_IDS.includes(input?.pengVariantId as PengVariantId)
+    ? (input?.pengVariantId as PengVariantId)
+    : defaultMascotState.pengVariantId
 
   return {
     ...defaultMascotState,
     ...(input ?? {}),
     stage,
-    evolutionPath: 'dragon',
+    evolutionPath,
     koiVariantId,
-    accessories: getStageAccessories(stage),
+    pengVariantId,
+    accessories: getStageAccessories(stage, evolutionPath),
   }
 }
 
-function normalizeStage(stage: unknown): EvolutionStage {
+function normalizeStage(stage: unknown, path: EvolutionPath): EvolutionStage {
   const value = typeof stage === 'number' ? stage : 1
-  if (value >= 8) return 8
+  const maxStage = maxStageForPath(path)
+  if (value >= maxStage) return maxStage
   if (value <= 1) return 1
   return Math.floor(value) as EvolutionStage
 }
 
-/**
- * Calculate the current stage based on evoXP.
- */
-export function stageFromXp(evoXp: number): EvolutionStage {
-  const stages: EvolutionStage[] = [8, 7, 6, 5, 4, 3, 2, 1]
-  for (const stage of stages) {
-    if (evoXp >= STAGE_THRESHOLDS[stage]) return stage
+export function stageFromXp(evoXp: number, path: EvolutionPath = 'dragon'): EvolutionStage {
+  const maxStage = maxStageForPath(path)
+  for (let stage = maxStage; stage >= 1; stage -= 1) {
+    const typedStage = stage as EvolutionStage
+    if (evoXp >= STAGE_THRESHOLDS[typedStage]) return typedStage
   }
   return 1
 }
 
-/**
- * Calculate XP needed for the next stage.
- */
-export function xpToNextStage(currentXp: number, currentStage: EvolutionStage): number {
-  if (currentStage >= 8) return 0
-  const nextStage = (currentStage + 1) as EvolutionStage
+export function xpToNextStage(currentXp: number, currentStage: EvolutionStage, path: EvolutionPath = 'dragon'): number {
+  const stage = normalizeStage(currentStage, path)
+  const maxStage = maxStageForPath(path)
+  if (stage >= maxStage) return 0
+  const nextStage = (stage + 1) as EvolutionStage
   return Math.max(0, STAGE_THRESHOLDS[nextStage] - currentXp)
 }
 
-/**
- * Progress percentage toward the next stage.
- */
-export function stageProgress(currentXp: number, currentStage: EvolutionStage): number {
-  if (currentStage >= 8) return 100
-  const nextStage = (currentStage + 1) as EvolutionStage
-  const currentThreshold = STAGE_THRESHOLDS[currentStage]
+export function stageProgress(currentXp: number, currentStage: EvolutionStage, path: EvolutionPath = 'dragon'): number {
+  const stage = normalizeStage(currentStage, path)
+  const maxStage = maxStageForPath(path)
+  if (stage >= maxStage) return 100
+  const nextStage = (stage + 1) as EvolutionStage
+  const currentThreshold = STAGE_THRESHOLDS[stage]
   const nextThreshold = STAGE_THRESHOLDS[nextStage]
   const range = nextThreshold - currentThreshold
   const progress = currentXp - currentThreshold
   return Math.min(100, Math.max(0, Math.round((progress / range) * 100)))
 }
 
-/**
- * Called when a lesson is completed. Adds evoXP and may trigger evolution.
- */
-export function onLessonComplete(state: MascotState, today: string): MascotState {
+export function lessonEvoXpGain(state: MascotState): number {
   const safeState = normalizeMascotState(state)
-  const xpGain = 15 + Math.floor(safeState.stage * 2)
-  const newXp = safeState.evoXp + xpGain
-  const newStage = stageFromXp(newXp)
+  return 15 + Math.floor(safeState.stage * 2)
+}
+
+export function previewLessonComplete(state: MascotState, today: string): {
+  nextMascot: MascotState
+  evoXpGain: number
+  evolved: boolean
+} {
+  const safeState = normalizeMascotState(state)
+  const evoXpGain = lessonEvoXpGain(safeState)
+  const newXp = safeState.evoXp + evoXpGain
+  const newStage = stageFromXp(newXp, safeState.evolutionPath)
   const evolved = newStage > safeState.stage
 
   return {
-    ...safeState,
-    lessonsCompleted: safeState.lessonsCompleted + 1,
-    evoXp: newXp,
-    stage: newStage,
-    lastActiveDate: today,
-    inactiveDays: 0,
-    accessories: getStageAccessories(newStage),
-    mood: evolved ? 'excited' : 'happy',
-    animation: evolved ? 'evolve' : 'celebrate',
+    evoXpGain,
+    evolved,
+    nextMascot: {
+      ...safeState,
+      lessonsCompleted: safeState.lessonsCompleted + 1,
+      evoXp: newXp,
+      stage: newStage,
+      lastActiveDate: today,
+      inactiveDays: 0,
+      accessories: getStageAccessories(newStage, safeState.evolutionPath),
+      mood: evolved ? 'excited' : 'happy',
+      animation: evolved ? 'evolve' : 'celebrate',
+    },
   }
 }
 
-/**
- * Called when a card is reviewed (gives less XP than a lesson).
- */
+export function onLessonComplete(state: MascotState, today: string): MascotState {
+  return previewLessonComplete(state, today).nextMascot
+}
+
 export function onCardReview(state: MascotState, today: string): MascotState {
   const safeState = normalizeMascotState(state)
   const xpGain = 3
   const newXp = safeState.evoXp + xpGain
-  const newStage = stageFromXp(newXp)
+  const newStage = stageFromXp(newXp, safeState.evolutionPath)
 
   return {
     ...safeState,
@@ -340,16 +420,27 @@ export function onCardReview(state: MascotState, today: string): MascotState {
     stage: newStage,
     lastActiveDate: today,
     inactiveDays: 0,
-    accessories: getStageAccessories(newStage),
+    accessories: getStageAccessories(newStage, safeState.evolutionPath),
     mood: 'happy',
     animation: newStage > safeState.stage ? 'evolve' : 'idle',
   }
 }
 
-/**
- * Called when the app opens - checks for inactivity and devolves the mascot.
- * Each day of inactivity removes some evoXP, causing gradual devolution.
- */
+export function switchEvolutionPath(state: MascotState): MascotState {
+  const safeState = normalizeMascotState(state)
+  const evolutionPath: EvolutionPath = safeState.evolutionPath === 'dragon' ? 'peng' : 'dragon'
+  const stage = stageFromXp(safeState.evoXp, evolutionPath)
+
+  return {
+    ...safeState,
+    evolutionPath,
+    stage,
+    accessories: getStageAccessories(stage, evolutionPath),
+    mood: 'excited',
+    animation: 'evolve',
+  }
+}
+
 export function checkInactivity(state: MascotState, today: string): MascotState {
   const safeState = normalizeMascotState(state)
   if (!safeState.lastActiveDate || safeState.lastActiveDate === today) {
@@ -367,7 +458,7 @@ export function checkInactivity(state: MascotState, today: string): MascotState 
   const inactiveDays = daysDiff - 1
   const xpLoss = inactiveDays * (8 + inactiveDays * 2)
   const newXp = Math.max(0, safeState.evoXp - xpLoss)
-  const newStage = stageFromXp(newXp)
+  const newStage = stageFromXp(newXp, safeState.evolutionPath)
   const devolved = newStage < safeState.stage
 
   let mood: MascotMood = 'neutral'
@@ -379,28 +470,26 @@ export function checkInactivity(state: MascotState, today: string): MascotState 
     evoXp: newXp,
     stage: newStage,
     inactiveDays,
-    accessories: getStageAccessories(newStage),
+    accessories: getStageAccessories(newStage, safeState.evolutionPath),
     mood,
     animation: devolved ? 'devolve' : (inactiveDays >= 3 ? 'sleep' : 'idle'),
   }
 }
 
-/**
- * Get the dialogue the mascot says based on its mood and state.
- */
 export function getMascotDialogue(state: MascotState): string {
   const safeState = normalizeMascotState(state)
-  const variant = getKoiVariant(safeState.koiVariantId)
+  const variant = getMascotVariant(safeState)
+  const destination = safeState.evolutionPath === 'peng' ? 'Peng' : 'Dragao'
   const dialogues: Record<MascotMood, string[]> = {
     excited: [
-      `Evolui! ${variant.name} sente o dragao acordando.`,
+      `Evolui! ${variant.name} sente o caminho ${destination} acordando.`,
       `A linhagem ${variant.hanzi} brilhou. Vamos manter o ritmo.`,
-      'O Portal do Dragao esta mais perto.',
+      safeState.evolutionPath === 'peng' ? 'O ceu do Peng esta mais perto.' : 'O Portal do Dragao esta mais perto.',
     ],
     happy: [
       'Ni hao! Um pouco todo dia muda tudo.',
       'Jia you! Revisao curta tambem conta.',
-      `Seu koi ${variant.name} esta firme na correnteza.`,
+      `Seu ${variant.name} esta firme na correnteza.`,
     ],
     neutral: [
       'Bora estudar um bloco pequeno?',
@@ -410,7 +499,7 @@ export function getMascotDialogue(state: MascotState): string {
     sad: [
       'Senti falta do treino. Vamos recuperar com uma revisao facil.',
       'Sem revisao, a cauda perde brilho.',
-      'Um cartao Anki ja acorda o koi.',
+      'Um cartao Anki ja acorda o mascote.',
     ],
     sleepy: [
       'Zzz... uma licao curta ja me puxa de volta.',
