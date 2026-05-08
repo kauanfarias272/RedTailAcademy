@@ -6848,3 +6848,274 @@ body.focus-mode .workspace {
     border-radius: 3px !important;
   }
 }
+
+/* ─── Image Match Exercise ─── */
+.img-ex-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 16px 32px;
+  min-height: 100svh;
+  background: #0e0a08;
+}
+
+.img-ex-head {
+  text-align: center;
+  padding-top: 8px;
+}
+
+.img-ex-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f5ead6;
+  margin: 4px 0 2px;
+}
+
+.img-ex-hint {
+  font-size: 12px;
+  color: rgba(245,234,214,0.50);
+  margin: 0;
+}
+
+.img-ex-cols {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  max-width: 400px;
+  flex: 1;
+}
+
+.img-ex-words-col,
+.img-ex-emoji-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.img-word-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 12px 8px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(245,234,214,0.12);
+  background: rgba(245,234,214,0.055);
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, transform 0.12s;
+  min-height: 64px;
+}
+
+.img-word-card.sel {
+  border-color: #d4a04a;
+  background: rgba(212,160,74,0.15);
+  transform: scale(1.03);
+}
+
+.img-word-card.done {
+  border-color: rgba(90,139,106,0.45);
+  background: rgba(90,139,106,0.12);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.img-word-card.wrong {
+  border-color: rgba(193,39,45,0.75);
+  background: rgba(193,39,45,0.13);
+  animation: shake-brief 0.35s ease;
+}
+
+.img-wc-hanzi {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f5ead6;
+  font-family: 'Noto Serif SC', serif;
+}
+
+.img-wc-pinyin {
+  font-size: 11px;
+  color: rgba(245,234,214,0.55);
+}
+
+.img-emoji-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(245,234,214,0.12);
+  background: rgba(245,234,214,0.055);
+  cursor: pointer;
+  min-height: 64px;
+  transition: border-color 0.18s, background 0.18s, transform 0.12s;
+}
+
+.img-emoji-tile:hover,
+.img-emoji-tile:active {
+  border-color: rgba(212,160,74,0.45);
+  background: rgba(212,160,74,0.08);
+  transform: scale(1.05);
+}
+
+.img-emoji-tile.done {
+  border-color: rgba(90,139,106,0.45);
+  background: rgba(90,139,106,0.12);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.img-emoji-tile.correct {
+  border-color: rgba(90,139,106,0.80);
+  background: rgba(90,139,106,0.22);
+  animation: pop-correct 0.35s ease;
+}
+
+.img-ex-skip {
+  font-size: 12px;
+  color: rgba(245,234,214,0.38);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 12px;
+  margin-top: auto;
+}
+
+.img-ex-skip:hover { color: rgba(245,234,214,0.65); }
+
+@keyframes shake-brief {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+@keyframes pop-correct {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+/* ─── Bucket Exercise ─── */
+.bucket-ex-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 16px 32px;
+  min-height: 100svh;
+  background: #0e0a08;
+}
+
+.bucket-ex-buckets {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.bucket-ex-bucket {
+  flex: 1;
+  min-height: 120px;
+  border-radius: 16px;
+  border: 2px dashed rgba(212,160,74,0.28);
+  background: rgba(212,160,74,0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  cursor: default;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.bucket-ex-bucket.ready {
+  border-color: rgba(212,160,74,0.55);
+  background: rgba(212,160,74,0.10);
+  cursor: pointer;
+}
+
+.bucket-ex-bucket.ready:hover,
+.bucket-ex-bucket.ready:active {
+  border-color: #d4a04a;
+  background: rgba(212,160,74,0.18);
+}
+
+.bucket-ex-bucket.flash {
+  border-color: rgba(90,139,106,0.80);
+  background: rgba(90,139,106,0.18);
+  animation: pop-correct 0.35s ease;
+}
+
+.bucket-ex-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #d4a04a;
+  font-family: 'Noto Serif SC', serif;
+}
+
+.bucket-ex-placed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.bucket-placed-emoji {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.bucket-ex-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+  max-width: 400px;
+}
+
+.bucket-ex-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(245,234,214,0.12);
+  background: rgba(245,234,214,0.055);
+  cursor: pointer;
+  min-width: 80px;
+  transition: border-color 0.18s, background 0.18s, transform 0.12s;
+}
+
+.bucket-ex-card.sel {
+  border-color: #d4a04a;
+  background: rgba(212,160,74,0.15);
+  transform: scale(1.06);
+  box-shadow: 0 4px 16px rgba(212,160,74,0.30);
+}
+
+.bucket-ex-card.wrong {
+  border-color: rgba(193,39,45,0.75);
+  background: rgba(193,39,45,0.13);
+  animation: shake-brief 0.35s ease;
+}
+
+.bucket-card-emoji { font-size: 36px; line-height: 1; }
+
+.bucket-card-pt {
+  font-size: 11px;
+  color: rgba(245,234,214,0.60);
+  text-align: center;
+}
+
+.bucket-all-done {
+  font-size: 18px;
+  color: #7ec8a0;
+  font-weight: 700;
+  text-align: center;
+  padding: 16px;
+}

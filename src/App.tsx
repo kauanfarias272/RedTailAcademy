@@ -96,6 +96,9 @@ type Difficulty = 'hard' | 'good' | 'easy'
 type MicState = 'idle' | 'starting' | 'listening' | 'processing' | 'success' | 'fail' | 'error'
 type CultureFilter = 'all' | 'meme' | 'music' | 'history' | 'pronunciation'
 type LessonRunStats = { attempts: number; correct: number }
+type InterstitialExercise =
+  | { type: 'match'; phrases: Phrase[] }
+  | { type: 'bucket'; phrases: Phrase[]; buckets: [string, string]; bucketMap: Record<string, 0 | 1> }
 type MandarinTtsPlugin = {
   speak(options: { text: string; rate?: number }): Promise<{ spoken: boolean }>
   stop(): Promise<void>
@@ -382,6 +385,8 @@ function App() {
   const [quizLocked, setQuizLocked] = useState(false)
   const [isAutoAdvancing, setIsAutoAdvancing] = useState(false)
   const [lessonStats, setLessonStats] = useState<LessonRunStats>({ attempts: 0, correct: 0 })
+  const [lessonInterstitial, setLessonInterstitial] = useState<InterstitialExercise | null>(null)
+  const [lessonInterstitialUsed, setLessonInterstitialUsed] = useState(false)
   const [isCardFlipped, setIsCardFlipped] = useState(false)
   const [clipTitle, setClipTitle] = useState('')
   const [clipUrl, setClipUrl] = useState('')
@@ -749,6 +754,8 @@ function App() {
     setQuizChoice('')
     setQuizLocked(false)
     setLessonStats({ attempts: 0, correct: 0 })
+    setLessonInterstitial(null)
+    setLessonInterstitialUsed(false)
     setSelectedLessonId(lessonId)
     setIsLessonActive(true)
   }
@@ -756,6 +763,47 @@ function App() {
   function advanceLessonFlow() {
     if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
     setIsAutoAdvancing(false)
+
+    const midpoint = Math.floor(sessionPhrases.length / 2)
+    if (!lessonInterstitialUsed && lessonStep === midpoint - 1 && sessionPhrases.length >= 4) {
+      const emojiPhrases = sessionPhrases.filter((p) => p.emoji)
+      if (emojiPhrases.length >= 3) {
+        const catLabels: Record<string, string> = {
+          greeting: '打招呼', farewell: '再见', family: '家人', politeness: '礼貌',
+          question: '问句', place: '地方', action: '动作', person: '人物', time: '时间', food: '食物',
+        }
+        const catGroups = new Map<string, Phrase[]>()
+        for (const phrase of emojiPhrases) {
+          if (!phrase.category) continue
+          const group = catGroups.get(phrase.category) ?? []
+          group.push(phrase)
+          catGroups.set(phrase.category, group)
+        }
+        const validGroups = [...catGroups.values()].filter((g) => g.length >= 2)
+        if (validGroups.length >= 2) {
+          const g0 = validGroups[0].slice(0, 2)
+          const g1 = validGroups[1].slice(0, 2)
+          const bucketMap: Record<string, 0 | 1> = {}
+          g0.forEach((p) => { bucketMap[p.id] = 0 })
+          g1.forEach((p) => { bucketMap[p.id] = 1 })
+          const cat0 = g0[0].category ?? ''
+          const cat1 = g1[0].category ?? ''
+          setLessonInterstitialUsed(true)
+          setLessonInterstitial({
+            type: 'bucket',
+            phrases: [...g0, ...g1],
+            buckets: [catLabels[cat0] ?? cat0, catLabels[cat1] ?? cat1],
+            bucketMap,
+          })
+          return
+        }
+        if (emojiPhrases.length >= 4) {
+          setLessonInterstitialUsed(true)
+          setLessonInterstitial({ type: 'match', phrases: emojiPhrases.slice(0, 4) })
+          return
+        }
+      }
+    }
 
     if (lessonStep < sessionPhrases.length - 1) {
       setLessonStep((current) => current + 1)
@@ -779,6 +827,13 @@ function App() {
 
     setPracticeMode('cards')
     setActiveTab('practice')
+  }
+
+  function onInterstitialDone() {
+    setLessonInterstitial(null)
+    setLessonStep((current) => current + 1)
+    setQuizChoice('')
+    setQuizLocked(false)
   }
 
   function flashToast(kind: 'good' | 'bad', text: string, duration = 1500) {
@@ -1447,7 +1502,19 @@ function App() {
           }
         />
 
-        {activeTab === 'learn' && (
+        {activeTab === 'learn' && isLessonActive && lessonInterstitial ? (
+          lessonInterstitial.type === 'match' ? (
+            <ImageMatchExercise phrases={lessonInterstitial.phrases} onDone={onInterstitialDone} onSpeak={speak} />
+          ) : (
+            <BucketExercise
+              phrases={lessonInterstitial.phrases}
+              buckets={lessonInterstitial.buckets}
+              bucketMap={lessonInterstitial.bucketMap}
+              onDone={onInterstitialDone}
+              onSpeak={speak}
+            />
+          )
+        ) : activeTab === 'learn' ? (
           <LearnView
             selectedLesson={selectedLesson}
             selectedLessonId={selectedLessonId}
@@ -1469,13 +1536,15 @@ function App() {
               if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
               setIsAutoAdvancing(false)
               setLessonStats({ attempts: 0, correct: 0 })
+              setLessonInterstitial(null)
+              setLessonInterstitialUsed(false)
               setIsLessonActive(false)
             }}
             onChoose={chooseQuizAnswer}
             onSpeak={speak}
             onAdvanceNow={advanceLessonFlow}
           />
-        )}
+        ) : null}
         {activeTab === 'practice' && (
           <PracticeView
             mode={practiceMode}
@@ -2649,6 +2718,206 @@ function CardsView({
         </div>
       </section>
 
+    </div>
+  )
+}
+
+function ImageMatchExercise({
+  phrases,
+  onDone,
+  onSpeak,
+}: {
+  phrases: Phrase[]
+  onDone: () => void
+  onSpeak: (text: string) => void
+}) {
+  const [shuffledEmojis] = useState(() => [...phrases].sort(() => Math.random() - 0.5))
+  const [selectedWord, setSelectedWord] = useState<string | null>(null)
+  const [matched, setMatched] = useState<Set<string>>(new Set())
+  const [flashWrong, setFlashWrong] = useState<string | null>(null)
+  const [flashCorrect, setFlashCorrect] = useState<string | null>(null)
+
+  function handleWordTap(id: string) {
+    if (matched.has(id)) return
+    setSelectedWord((prev) => (prev === id ? null : id))
+  }
+
+  function handleEmojiTap(id: string) {
+    if (matched.has(id)) return
+    if (!selectedWord) return
+    if (selectedWord === id) {
+      setFlashCorrect(id)
+      setSelectedWord(null)
+      window.setTimeout(() => {
+        setFlashCorrect(null)
+        setMatched((prev) => {
+          const next = new Set(prev)
+          next.add(id)
+          if (next.size === phrases.length) window.setTimeout(onDone, 500)
+          return next
+        })
+      }, 450)
+    } else {
+      onSpeak(phrases.find((p) => p.id === selectedWord)?.hanzi ?? '')
+      setFlashWrong(selectedWord)
+      window.setTimeout(() => { setFlashWrong(null); setSelectedWord(null) }, 600)
+    }
+  }
+
+  return (
+    <div className="img-ex-layout">
+      <div className="img-ex-head">
+        <p className="eyebrow">Mini-jogo</p>
+        <h3 className="img-ex-title">Conecte a palavra ao emoji</h3>
+        <p className="img-ex-hint">Toque uma palavra, depois o emoji certo</p>
+      </div>
+      <div className="img-ex-cols">
+        <div className="img-ex-words-col">
+          {phrases.map((phrase) => {
+            const isSel = selectedWord === phrase.id
+            const isMatched = matched.has(phrase.id)
+            const isWrong = flashWrong === phrase.id
+            return (
+              <button
+                key={phrase.id}
+                type="button"
+                className={[
+                  'img-word-card',
+                  isSel ? 'sel' : '',
+                  isMatched ? 'done' : '',
+                  isWrong ? 'wrong' : '',
+                ].filter(Boolean).join(' ')}
+                disabled={isMatched}
+                onClick={() => handleWordTap(phrase.id)}
+              >
+                <span className="img-wc-hanzi">{phrase.hanzi}</span>
+                <span className="img-wc-pinyin">{phrase.pinyin}</span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="img-ex-emoji-col">
+          {shuffledEmojis.map((phrase) => {
+            const isMatched = matched.has(phrase.id)
+            const isCorrect = flashCorrect === phrase.id
+            return (
+              <button
+                key={phrase.id}
+                type="button"
+                className={[
+                  'img-emoji-tile',
+                  isMatched ? 'done' : '',
+                  isCorrect ? 'correct' : '',
+                ].filter(Boolean).join(' ')}
+                disabled={isMatched}
+                onClick={() => handleEmojiTap(phrase.id)}
+              >
+                <span>{phrase.emoji}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <button type="button" className="img-ex-skip" onClick={onDone}>Pular exercicio →</button>
+    </div>
+  )
+}
+
+function BucketExercise({
+  phrases,
+  buckets,
+  bucketMap,
+  onDone,
+  onSpeak,
+}: {
+  phrases: Phrase[]
+  buckets: [string, string]
+  bucketMap: Record<string, 0 | 1>
+  onDone: () => void
+  onSpeak: (text: string) => void
+}) {
+  const [placed, setPlaced] = useState<Record<string, 0 | 1>>({})
+  const [selected, setSelected] = useState<string | null>(null)
+  const [flashWrong, setFlashWrong] = useState<string | null>(null)
+  const [flashBucket, setFlashBucket] = useState<0 | 1 | null>(null)
+
+  const unplaced = phrases.filter((p) => !(p.id in placed))
+
+  function selectCard(id: string) {
+    if (id in placed) return
+    onSpeak(phrases.find((p) => p.id === id)?.hanzi ?? '')
+    setSelected((prev) => (prev === id ? null : id))
+  }
+
+  function dropIntoBucket(bucketIdx: 0 | 1) {
+    if (!selected) return
+    const isCorrect = bucketMap[selected] === bucketIdx
+    if (isCorrect) {
+      setFlashBucket(bucketIdx)
+      const id = selected
+      setSelected(null)
+      window.setTimeout(() => {
+        setFlashBucket(null)
+        setPlaced((prev) => {
+          const next = { ...prev, [id]: bucketIdx }
+          if (Object.keys(next).length === phrases.length) window.setTimeout(onDone, 600)
+          return next
+        })
+      }, 400)
+    } else {
+      setFlashWrong(selected)
+      window.setTimeout(() => { setFlashWrong(null); setSelected(null) }, 700)
+    }
+  }
+
+  return (
+    <div className="bucket-ex-layout">
+      <div className="img-ex-head">
+        <p className="eyebrow">Mini-jogo</p>
+        <h3 className="img-ex-title">Coloque no grupo certo</h3>
+        <p className="img-ex-hint">{selected ? 'Agora toque o grupo correto acima' : 'Toque uma carta para selecionar'}</p>
+      </div>
+      <div className="bucket-ex-buckets">
+        {buckets.map((label, i) => {
+          const idx = i as 0 | 1
+          const bucketPhrases = phrases.filter((p) => placed[p.id] === idx)
+          const isFlash = flashBucket === idx
+          return (
+            <button
+              key={i}
+              type="button"
+              className={['bucket-ex-bucket', selected ? 'ready' : '', isFlash ? 'flash' : ''].filter(Boolean).join(' ')}
+              onClick={() => dropIntoBucket(idx)}
+            >
+              <span className="bucket-ex-label">{label}</span>
+              <div className="bucket-ex-placed">
+                {bucketPhrases.map((p) => (
+                  <span key={p.id} className="bucket-placed-emoji">{p.emoji}</span>
+                ))}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+      <div className="bucket-ex-cards">
+        {unplaced.map((phrase) => (
+          <button
+            key={phrase.id}
+            type="button"
+            className={[
+              'bucket-ex-card',
+              selected === phrase.id ? 'sel' : '',
+              flashWrong === phrase.id ? 'wrong' : '',
+            ].filter(Boolean).join(' ')}
+            onClick={() => selectCard(phrase.id)}
+          >
+            <span className="bucket-card-emoji">{phrase.emoji}</span>
+            <span className="bucket-card-pt">{phrase.portuguese}</span>
+          </button>
+        ))}
+        {unplaced.length === 0 && <p className="bucket-all-done">Tudo certo! 好!</p>}
+      </div>
+      <button type="button" className="img-ex-skip" onClick={onDone}>Pular exercicio →</button>
     </div>
   )
 }

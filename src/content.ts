@@ -6,6 +6,8 @@ export type Phrase = {
   literal: string
   note: string
   tonePattern: string
+  emoji?: string
+  category?: 'greeting' | 'farewell' | 'family' | 'politeness' | 'question' | 'place' | 'action' | 'person' | 'time' | 'food'
 }
 
 export type Lesson = {
@@ -167,11 +169,11 @@ export const lessons: Lesson[] = [
     xp: 18,
     minutes: 6,
     phrases: [
-      { id: 'ni-hao', hanzi: '你好', pinyin: 'nǐ hǎo', portuguese: 'ola', literal: 'voce bom', note: 'Na fala natural o primeiro terceiro tom sobe para soar mais leve.', tonePattern: '3-3' },
-      { id: 'ni-hao-ma-greet', hanzi: '你好吗', pinyin: 'nǐ hǎo ma', portuguese: 'voce esta bem?', literal: 'voce bom (pergunta)', note: 'A particula 吗 transforma o cumprimento em pergunta de status.', tonePattern: '3-3-0' },
-      { id: 'wo-hen-hao', hanzi: '我很好', pinyin: 'wǒ hěn hǎo', portuguese: 'eu estou bem', literal: 'eu muito bom', note: 'hen suaviza; nem sempre significa "muito" nesse contexto.', tonePattern: '3-3-3' },
-      { id: 'ni-ne', hanzi: '你呢？', pinyin: 'nǐ ne?', portuguese: 'e voce?', literal: 'voce e (devolver)', note: '呢 devolve a pergunta sem repetir o verbo.', tonePattern: '3-0' },
-      { id: 'ye-hao', hanzi: '也好', pinyin: 'yě hǎo', portuguese: 'tambem estou bem', literal: 'tambem bom', note: '也 + adjetivo concorda com o que foi dito antes.', tonePattern: '3-3' },
+      { id: 'ni-hao', hanzi: '你好', pinyin: 'nǐ hǎo', portuguese: 'ola', literal: 'voce bom', note: 'Na fala natural o primeiro terceiro tom sobe para soar mais leve.', tonePattern: '3-3', emoji: '👋', category: 'greeting' },
+      { id: 'ni-hao-ma-greet', hanzi: '你好吗', pinyin: 'nǐ hǎo ma', portuguese: 'voce esta bem?', literal: 'voce bom (pergunta)', note: 'A particula 吗 transforma o cumprimento em pergunta de status.', tonePattern: '3-3-0', emoji: '🤔', category: 'question' },
+      { id: 'wo-hen-hao', hanzi: '我很好', pinyin: 'wǒ hěn hǎo', portuguese: 'eu estou bem', literal: 'eu muito bom', note: 'hen suaviza; nem sempre significa "muito" nesse contexto.', tonePattern: '3-3-3', emoji: '😊', category: 'greeting' },
+      { id: 'ni-ne', hanzi: '你呢？', pinyin: 'nǐ ne?', portuguese: 'e voce?', literal: 'voce e (devolver)', note: '呢 devolve a pergunta sem repetir o verbo.', tonePattern: '3-0', emoji: '🫵', category: 'question' },
+      { id: 'ye-hao', hanzi: '也好', pinyin: 'yě hǎo', portuguese: 'tambem estou bem', literal: 'tambem bom', note: '也 + adjetivo concorda com o que foi dito antes.', tonePattern: '3-3', emoji: '👍', category: 'greeting' },
     ],
   },
   {
@@ -199,12 +201,12 @@ export const lessons: Lesson[] = [
     minutes: 7,
     reviewPhraseIds: ['ma-tones', 'shi-tones'],
     phrases: [
-      { id: 'zhong-guo', hanzi: '中国', pinyin: 'Zhōngguó', portuguese: 'China', literal: 'pais do meio', note: 'zh tem a lingua enrolada para tras, diferente de z.', tonePattern: '1-2' },
-      { id: 'ren', hanzi: '人', pinyin: 'rén', portuguese: 'pessoa', literal: 'pessoa', note: 'O r em mandarim fica entre r, zh e um som mais retroflexo.', tonePattern: '2' },
-      { id: 'chi-fan-quick', hanzi: '吃饭', pinyin: 'chī fàn', portuguese: 'comer', literal: 'comer arroz', note: 'ch e a versao "soprada" de zh; aspira mais ar.', tonePattern: '1-4' },
-      { id: 'lao-shi', hanzi: '老师', pinyin: 'lǎoshī', portuguese: 'professor(a)', literal: 'velho mestre', note: 'sh e a inicial mais retroflexa; nao confundir com s.', tonePattern: '3-1' },
-      { id: 'ri-ben', hanzi: '日本', pinyin: 'Rìběn', portuguese: 'Japao', literal: 'origem do sol', note: 'r aqui e quase um zh suave com vibracao na ponta da lingua.', tonePattern: '4-3' },
-      { id: 'shen-me-shi-hou', hanzi: '什么时候', pinyin: 'shénme shíhou', portuguese: 'quando?', literal: 'que momento', note: 'Pratica: sh-r-sh em sequencia, mantenha a lingua atras dos dentes.', tonePattern: '2-0-2-0' },
+      { id: 'zhong-guo', hanzi: '中国', pinyin: 'Zhōngguó', portuguese: 'China', literal: 'pais do meio', note: 'zh tem a lingua enrolada para tras, diferente de z.', tonePattern: '1-2', emoji: '🇨🇳', category: 'place' },
+      { id: 'ren', hanzi: '人', pinyin: 'rén', portuguese: 'pessoa', literal: 'pessoa', note: 'O r em mandarim fica entre r, zh e um som mais retroflexo.', tonePattern: '2', emoji: '🧑', category: 'person' },
+      { id: 'chi-fan-quick', hanzi: '吃饭', pinyin: 'chī fàn', portuguese: 'comer', literal: 'comer arroz', note: 'ch e a versao "soprada" de zh; aspira mais ar.', tonePattern: '1-4', emoji: '🍚', category: 'action' },
+      { id: 'lao-shi', hanzi: '老师', pinyin: 'lǎoshī', portuguese: 'professor(a)', literal: 'velho mestre', note: 'sh e a inicial mais retroflexa; nao confundir com s.', tonePattern: '3-1', emoji: '👩‍🏫', category: 'person' },
+      { id: 'ri-ben', hanzi: '日本', pinyin: 'Rìběn', portuguese: 'Japao', literal: 'origem do sol', note: 'r aqui e quase um zh suave com vibracao na ponta da lingua.', tonePattern: '4-3', emoji: '🇯🇵', category: 'place' },
+      { id: 'shen-me-shi-hou', hanzi: '什么时候', pinyin: 'shénme shíhou', portuguese: 'quando?', literal: 'que momento', note: 'Pratica: sh-r-sh em sequencia, mantenha a lingua atras dos dentes.', tonePattern: '2-0-2-0', emoji: '⏰', category: 'question' },
     ],
   },
   {
@@ -216,11 +218,11 @@ export const lessons: Lesson[] = [
     minutes: 6,
     reviewPhraseIds: ['zhong-guo', 'ren'],
     phrases: [
-      { id: 'ba-ba', hanzi: '爸爸', pinyin: 'bàba', portuguese: 'pai', literal: 'pai', note: 'A segunda silaba fica leve; nao vire tom forte de novo.', tonePattern: '4-0' },
-      { id: 'ma-ma', hanzi: '妈妈', pinyin: 'māma', portuguese: 'mae', literal: 'mae', note: 'Repita devagar e depois natural; segundo ma curto.', tonePattern: '1-0' },
-      { id: 'ge-ge', hanzi: '哥哥', pinyin: 'gēge', portuguese: 'irmao mais velho', literal: 'irmao irmao', note: 'Padrao de duplicacao familiar com tom neutro no fim.', tonePattern: '1-0' },
-      { id: 'jie-jie', hanzi: '姐姐', pinyin: 'jiějie', portuguese: 'irma mais velha', literal: 'irma irma', note: 'jie tem ditongo i+e; mantenha a transicao curta.', tonePattern: '3-0' },
-      { id: 'pang-pang', hanzi: '胖胖', pinyin: 'pàngpang', portuguese: 'gordinho (apelido carinhoso)', literal: 'gordinho', note: 'A final ang e nasalizada — som vem do nariz, nao da garganta.', tonePattern: '4-0' },
+      { id: 'ba-ba', hanzi: '爸爸', pinyin: 'bàba', portuguese: 'pai', literal: 'pai', note: 'A segunda silaba fica leve; nao vire tom forte de novo.', tonePattern: '4-0', emoji: '👨', category: 'family' },
+      { id: 'ma-ma', hanzi: '妈妈', pinyin: 'māma', portuguese: 'mae', literal: 'mae', note: 'Repita devagar e depois natural; segundo ma curto.', tonePattern: '1-0', emoji: '👩', category: 'family' },
+      { id: 'ge-ge', hanzi: '哥哥', pinyin: 'gēge', portuguese: 'irmao mais velho', literal: 'irmao irmao', note: 'Padrao de duplicacao familiar com tom neutro no fim.', tonePattern: '1-0', emoji: '👦', category: 'family' },
+      { id: 'jie-jie', hanzi: '姐姐', pinyin: 'jiějie', portuguese: 'irma mais velha', literal: 'irma irma', note: 'jie tem ditongo i+e; mantenha a transicao curta.', tonePattern: '3-0', emoji: '👧', category: 'family' },
+      { id: 'pang-pang', hanzi: '胖胖', pinyin: 'pàngpang', portuguese: 'gordinho (apelido carinhoso)', literal: 'gordinho', note: 'A final ang e nasalizada — som vem do nariz, nao da garganta.', tonePattern: '4-0', emoji: '😄', category: 'family' },
     ],
   },
   {
@@ -232,12 +234,12 @@ export const lessons: Lesson[] = [
     minutes: 7,
     reviewPhraseIds: ['ni-hao', 'chi-fan-quick'],
     phrases: [
-      { id: 'zao-shang-hao', hanzi: '早上好', pinyin: 'zǎoshang hǎo', portuguese: 'bom dia', literal: 'manha boa', note: 'Usado pela manha; ni hao funciona o dia todo.', tonePattern: '3-0-3' },
-      { id: 'wan-shang-hao', hanzi: '晚上好', pinyin: 'wǎnshang hǎo', portuguese: 'boa noite (cumprimento)', literal: 'noite boa', note: 'Cumprimento, nao despedida; para "tchau a noite" use 晚安.', tonePattern: '3-0-3' },
-      { id: 'wan-an', hanzi: '晚安', pinyin: 'wǎn ān', portuguese: 'boa noite (despedida)', literal: 'noite paz', note: 'Diz quando alguem vai dormir.', tonePattern: '3-1' },
-      { id: 'zai-jian', hanzi: '再见', pinyin: 'zàijiàn', portuguese: 'tchau', literal: 'ver de novo', note: 'Formal o suficiente para quase qualquer contexto.', tonePattern: '4-4' },
-      { id: 'hui-jian', hanzi: '回见', pinyin: 'huíjiàn', portuguese: 'ate mais', literal: 'voltar ver', note: 'Mais informal que 再见; usado entre amigos.', tonePattern: '2-4' },
-      { id: 'huan-ying', hanzi: '欢迎', pinyin: 'huānyíng', portuguese: 'bem-vindo', literal: 'alegremente receber', note: 'Frequente em lojas, hoteis e dialogos formais.', tonePattern: '1-2' },
+      { id: 'zao-shang-hao', hanzi: '早上好', pinyin: 'zǎoshang hǎo', portuguese: 'bom dia', literal: 'manha boa', note: 'Usado pela manha; ni hao funciona o dia todo.', tonePattern: '3-0-3', emoji: '🌅', category: 'greeting' },
+      { id: 'wan-shang-hao', hanzi: '晚上好', pinyin: 'wǎnshang hǎo', portuguese: 'boa noite (cumprimento)', literal: 'noite boa', note: 'Cumprimento, nao despedida; para "tchau a noite" use 晚安.', tonePattern: '3-0-3', emoji: '🌙', category: 'greeting' },
+      { id: 'wan-an', hanzi: '晚安', pinyin: 'wǎn ān', portuguese: 'boa noite (despedida)', literal: 'noite paz', note: 'Diz quando alguem vai dormir.', tonePattern: '3-1', emoji: '😴', category: 'farewell' },
+      { id: 'zai-jian', hanzi: '再见', pinyin: 'zàijiàn', portuguese: 'tchau', literal: 'ver de novo', note: 'Formal o suficiente para quase qualquer contexto.', tonePattern: '4-4', emoji: '🤚', category: 'farewell' },
+      { id: 'hui-jian', hanzi: '回见', pinyin: 'huíjiàn', portuguese: 'ate mais', literal: 'voltar ver', note: 'Mais informal que 再见; usado entre amigos.', tonePattern: '2-4', emoji: '✌️', category: 'farewell' },
+      { id: 'huan-ying', hanzi: '欢迎', pinyin: 'huānyíng', portuguese: 'bem-vindo', literal: 'alegremente receber', note: 'Frequente em lojas, hoteis e dialogos formais.', tonePattern: '1-2', emoji: '🎉', category: 'greeting' },
     ],
   },
   {
@@ -249,12 +251,12 @@ export const lessons: Lesson[] = [
     minutes: 7,
     reviewPhraseIds: ['ni-hao', 'zai-jian'],
     phrases: [
-      { id: 'xie-xie', hanzi: '谢谢', pinyin: 'xièxie', portuguese: 'obrigado', literal: 'agradecer', note: 'A segunda silaba fica mais leve.', tonePattern: '4-0' },
-      { id: 'bu-ke-qi', hanzi: '不客气', pinyin: 'bú kèqi', portuguese: 'de nada', literal: 'nao seja cerimonioso', note: 'Resposta padrao a 谢谢.', tonePattern: '2-4-0' },
-      { id: 'dui-bu-qi', hanzi: '对不起', pinyin: 'duìbuqǐ', portuguese: 'desculpa', literal: 'nao consigo te encarar', note: 'Pedido de desculpas firme; mais forte que 不好意思.', tonePattern: '4-0-3' },
-      { id: 'mei-guan-xi', hanzi: '没关系', pinyin: 'méi guānxi', portuguese: 'sem problema', literal: 'nao tem relacao', note: 'Resposta natural para desculpas ou pequenos erros.', tonePattern: '2-1-0' },
-      { id: 'qing', hanzi: '请', pinyin: 'qǐng', portuguese: 'por favor', literal: 'pedir', note: 'Sozinho ou colado em verbos: 请坐 (sente-se), 请说 (fale).', tonePattern: '3' },
-      { id: 'bu-hao-yi-si', hanzi: '不好意思', pinyin: 'bù hǎoyìsi', portuguese: 'desculpa, com licenca', literal: 'sem boa intencao', note: 'Mais leve que 对不起; bom para desculpa pequena ou abordar alguem.', tonePattern: '4-3-4-0' },
+      { id: 'xie-xie', hanzi: '谢谢', pinyin: 'xièxie', portuguese: 'obrigado', literal: 'agradecer', note: 'A segunda silaba fica mais leve.', tonePattern: '4-0', emoji: '🙏', category: 'politeness' },
+      { id: 'bu-ke-qi', hanzi: '不客气', pinyin: 'bú kèqi', portuguese: 'de nada', literal: 'nao seja cerimonioso', note: 'Resposta padrao a 谢谢.', tonePattern: '2-4-0', emoji: '😌', category: 'politeness' },
+      { id: 'dui-bu-qi', hanzi: '对不起', pinyin: 'duìbuqǐ', portuguese: 'desculpa', literal: 'nao consigo te encarar', note: 'Pedido de desculpas firme; mais forte que 不好意思.', tonePattern: '4-0-3', emoji: '😔', category: 'politeness' },
+      { id: 'mei-guan-xi', hanzi: '没关系', pinyin: 'méi guānxi', portuguese: 'sem problema', literal: 'nao tem relacao', note: 'Resposta natural para desculpas ou pequenos erros.', tonePattern: '2-1-0', emoji: '🤷', category: 'politeness' },
+      { id: 'qing', hanzi: '请', pinyin: 'qǐng', portuguese: 'por favor', literal: 'pedir', note: 'Sozinho ou colado em verbos: 请坐 (sente-se), 请说 (fale).', tonePattern: '3', emoji: '🙇', category: 'politeness' },
+      { id: 'bu-hao-yi-si', hanzi: '不好意思', pinyin: 'bù hǎoyìsi', portuguese: 'desculpa, com licenca', literal: 'sem boa intencao', note: 'Mais leve que 对不起; bom para desculpa pequena ou abordar alguem.', tonePattern: '4-3-4-0', emoji: '😅', category: 'politeness' },
     ],
   },
   {
@@ -266,12 +268,12 @@ export const lessons: Lesson[] = [
     minutes: 7,
     reviewPhraseIds: ['xie-xie', 'ni-hao-ma-greet'],
     phrases: [
-      { id: 'ni-hao-ma', hanzi: '你好吗？', pinyin: 'nǐ hǎo ma?', portuguese: 'voce esta bem?', literal: 'voce bom pergunta', note: 'ma transforma uma afirmacao em pergunta sim/nao.', tonePattern: '3-3-0' },
-      { id: 'shen-me', hanzi: '什么？', pinyin: 'shénme?', portuguese: 'o que?', literal: 'que coisa', note: 'Uma das palavras de pergunta mais frequentes.', tonePattern: '2-0' },
-      { id: 'shei', hanzi: '谁？', pinyin: 'shéi?', portuguese: 'quem?', literal: 'quem', note: 'Substitui a pessoa desconhecida; ocupa o lugar do nome.', tonePattern: '2' },
-      { id: 'na-li', hanzi: '哪里？', pinyin: 'nǎli?', portuguese: 'onde?', literal: 'qual lugar', note: 'Use junto com 在: 在哪里 → onde fica.', tonePattern: '3-0' },
-      { id: 'wei-shen-me', hanzi: '为什么？', pinyin: 'wèishénme?', portuguese: 'por que?', literal: 'por que coisa', note: 'Pergunta por motivo. Resposta usa 因为...', tonePattern: '4-2-0' },
-      { id: 'shi-bu-shi', hanzi: '是不是', pinyin: 'shì bu shì', portuguese: 'e ou nao e?', literal: 'ser nao ser', note: 'Estrutura V-不-V: forma compacta de fazer pergunta de confirmacao.', tonePattern: '4-0-4' },
+      { id: 'ni-hao-ma', hanzi: '你好吗？', pinyin: 'nǐ hǎo ma?', portuguese: 'voce esta bem?', literal: 'voce bom pergunta', note: 'ma transforma uma afirmacao em pergunta sim/nao.', tonePattern: '3-3-0', emoji: '🤔', category: 'question' },
+      { id: 'shen-me', hanzi: '什么？', pinyin: 'shénme?', portuguese: 'o que?', literal: 'que coisa', note: 'Uma das palavras de pergunta mais frequentes.', tonePattern: '2-0', emoji: '❓', category: 'question' },
+      { id: 'shei', hanzi: '谁？', pinyin: 'shéi?', portuguese: 'quem?', literal: 'quem', note: 'Substitui a pessoa desconhecida; ocupa o lugar do nome.', tonePattern: '2', emoji: '👤', category: 'question' },
+      { id: 'na-li', hanzi: '哪里？', pinyin: 'nǎli?', portuguese: 'onde?', literal: 'qual lugar', note: 'Use junto com 在: 在哪里 → onde fica.', tonePattern: '3-0', emoji: '📍', category: 'question' },
+      { id: 'wei-shen-me', hanzi: '为什么？', pinyin: 'wèishénme?', portuguese: 'por que?', literal: 'por que coisa', note: 'Pergunta por motivo. Resposta usa 因为...', tonePattern: '4-2-0', emoji: '💭', category: 'question' },
+      { id: 'shi-bu-shi', hanzi: '是不是', pinyin: 'shì bu shì', portuguese: 'e ou nao e?', literal: 'ser nao ser', note: 'Estrutura V-不-V: forma compacta de fazer pergunta de confirmacao.', tonePattern: '4-0-4', emoji: '⚖️', category: 'question' },
     ],
   },
   {
@@ -283,12 +285,12 @@ export const lessons: Lesson[] = [
     minutes: 8,
     reviewPhraseIds: ['dui-bu-qi', 'qing'],
     phrases: [
-      { id: 'qing-wen', hanzi: '请问', pinyin: 'qǐngwèn', portuguese: 'com licenca', literal: 'por favor perguntar', note: 'Use antes de perguntas para soar educado com desconhecidos.', tonePattern: '3-4' },
-      { id: 'ce-suo-zai-na-li', hanzi: '厕所在哪里？', pinyin: 'cèsuǒ zài nǎli?', portuguese: 'onde fica o banheiro?', literal: 'banheiro estar onde', note: '在哪里 e um bloco pronto para perguntar onde algo fica.', tonePattern: '4-3-4-3-0' },
-      { id: 'chu-kou', hanzi: '出口', pinyin: 'chūkǒu', portuguese: 'saida', literal: 'sair boca', note: 'Placa universal em estacoes, lojas e metros.', tonePattern: '1-3' },
-      { id: 'ru-kou', hanzi: '入口', pinyin: 'rùkǒu', portuguese: 'entrada', literal: 'entrar boca', note: 'Par com 出口; mesma estrutura.', tonePattern: '4-3' },
-      { id: 'zai-zhe-li', hanzi: '在这里', pinyin: 'zài zhèli', portuguese: 'aqui', literal: 'estar este lugar', note: 'Resposta tipica para 在哪里; troque 这 por 那 para "ali".', tonePattern: '4-4-0' },
-      { id: 'ting-yi-xia', hanzi: '听一下', pinyin: 'tīng yíxià', portuguese: 'escuta um pouco', literal: 'ouvir um momento', note: '一下 amacia o pedido; usado para chamar atencao educadamente.', tonePattern: '1-2-4' },
+      { id: 'qing-wen', hanzi: '请问', pinyin: 'qǐngwèn', portuguese: 'com licenca', literal: 'por favor perguntar', note: 'Use antes de perguntas para soar educado com desconhecidos.', tonePattern: '3-4', emoji: '🙋', category: 'politeness' },
+      { id: 'ce-suo-zai-na-li', hanzi: '厕所在哪里？', pinyin: 'cèsuǒ zài nǎli?', portuguese: 'onde fica o banheiro?', literal: 'banheiro estar onde', note: '在哪里 e um bloco pronto para perguntar onde algo fica.', tonePattern: '4-3-4-3-0', emoji: '🚻', category: 'place' },
+      { id: 'chu-kou', hanzi: '出口', pinyin: 'chūkǒu', portuguese: 'saida', literal: 'sair boca', note: 'Placa universal em estacoes, lojas e metros.', tonePattern: '1-3', emoji: '🚪', category: 'place' },
+      { id: 'ru-kou', hanzi: '入口', pinyin: 'rùkǒu', portuguese: 'entrada', literal: 'entrar boca', note: 'Par com 出口; mesma estrutura.', tonePattern: '4-3', emoji: '🏠', category: 'place' },
+      { id: 'zai-zhe-li', hanzi: '在这里', pinyin: 'zài zhèli', portuguese: 'aqui', literal: 'estar este lugar', note: 'Resposta tipica para 在哪里; troque 这 por 那 para "ali".', tonePattern: '4-4-0', emoji: '📍', category: 'place' },
+      { id: 'ting-yi-xia', hanzi: '听一下', pinyin: 'tīng yíxià', portuguese: 'escuta um pouco', literal: 'ouvir um momento', note: '一下 amacia o pedido; usado para chamar atencao educadamente.', tonePattern: '1-2-4', emoji: '👂', category: 'action' },
     ],
   },
   {
