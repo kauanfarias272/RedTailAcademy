@@ -6611,3 +6611,240 @@ body.focus-mode .workspace {
 
   .kw-ring { width: 200px; height: 200px; }
 }
+
+
+/* ================================================================
+   v0.2.17: Compact header + Koi center nav + lesson improvements
+   ================================================================ */
+
+/* COMPACT HEADER: hide title/subtitle on mobile, show only pills */
+@media (max-width: 1080px) {
+  .directionc-header {
+    padding: 9px 16px 9px;
+  }
+  .directionc-header-top {
+    margin-bottom: 0;
+  }
+  .directionc-title,
+  .directionc-subtitle {
+    display: none;
+  }
+  .directionc-error-strip,
+  .directionc-error-btn {
+    margin-top: 6px;
+    padding: 6px 11px;
+    font-size: 10.5px;
+  }
+  .directionc-error-btn {
+    cursor: pointer;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(193, 39, 45, 0.14);
+    border: 1.2px solid rgba(193, 39, 45, 0.45);
+    border-radius: 8px;
+    color: rgba(245, 234, 214, 0.9);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.3;
+    box-shadow: 0 0 10px rgba(193, 39, 45, 0.18);
+    text-align: left;
+  }
+  .directionc-error-btn:hover {
+    background: rgba(193, 39, 45, 0.22);
+  }
+}
+
+/* BOTTOM NAV: full-width flat bar like prototype */
+@media (max-width: 1080px) {
+  .bottom-nav {
+    position: fixed !important;
+    z-index: 20 !important;
+    inset: auto 0 0 !important;
+    border-radius: 0 !important;
+    padding: 0 4px calc(env(safe-area-inset-bottom)) !important;
+    display: flex !important;
+    align-items: stretch;
+    gap: 0 !important;
+    overflow: visible !important;
+    background: rgba(10, 8, 6, 0.97) !important;
+    border-top: 1px solid rgba(212, 160, 74, 0.24) !important;
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .workspace {
+    padding-bottom: 76px !important;
+  }
+
+  .c-screen,
+  .practice-layout,
+  .errors-layout,
+  .clips-layout,
+  .profile-layout,
+  .clan-layout,
+  .lesson-active-layout {
+    padding-bottom: 80px !important;
+  }
+
+  .learn-grid.c-screen {
+    padding-bottom: 80px !important;
+  }
+
+  .bottom-button {
+    flex: 1;
+    min-height: 62px !important;
+    border-radius: 8px !important;
+    padding: 5px 2px 6px !important;
+  }
+}
+
+/* KOI CENTER BUTTON: elevated circular like prototype */
+.bottom-button.koi-center-btn {
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  padding-bottom: 6px !important;
+  overflow: visible;
+  position: relative;
+}
+
+.bottom-button.koi-center-btn::before {
+  display: none !important;
+}
+
+.koi-center-inner {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c1272d, #8a1c20);
+  border: 2px solid rgba(212, 168, 85, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(193, 39, 45, 0.55), 0 4px 12px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  margin-top: -20px;
+  margin-bottom: 3px;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.bottom-button.koi-center-btn.active .koi-center-inner {
+  border-color: rgba(212, 168, 85, 0.9);
+  box-shadow: 0 8px 28px rgba(193, 39, 45, 0.8), 0 0 20px rgba(212, 168, 85, 0.45);
+  background: linear-gradient(135deg, #e84545, #c1272d);
+}
+
+.koi-center-label {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: rgba(245, 234, 214, 0.52);
+  line-height: 1;
+}
+
+.bottom-button.koi-center-btn.active .koi-center-label {
+  color: #ffd590;
+}
+
+/* LESSON PANEL: cleaner, darker, more gamified */
+@media (max-width: 1080px) {
+  .lesson-method-card {
+    display: none;
+  }
+
+  .lesson-panel {
+    background: linear-gradient(165deg, #221a13, #1a1410) !important;
+    border-color: rgba(212, 160, 74, 0.18) !important;
+    border-radius: 16px !important;
+  }
+
+  .phrase-stage {
+    padding: 18px 16px !important;
+    border-radius: 14px !important;
+    background: rgba(212, 160, 74, 0.05) !important;
+    border-color: rgba(212, 160, 74, 0.16) !important;
+    grid-template-columns: 44px 1fr !important;
+    align-items: start !important;
+  }
+
+  .phrase-stage strong {
+    font-size: clamp(40px, 13vw, 60px) !important;
+    line-height: 1 !important;
+  }
+
+  .answer-option {
+    min-height: 58px !important;
+    border-radius: 12px !important;
+    background: rgba(245, 234, 214, 0.055) !important;
+    border: 1.5px solid rgba(245, 234, 214, 0.10) !important;
+    color: #f5ead6 !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+  }
+
+  .answer-option.selected {
+    border-color: rgba(212, 160, 74, 0.75) !important;
+    background: rgba(212, 160, 74, 0.11) !important;
+  }
+
+  .answer-option.correct {
+    border-color: rgba(90, 139, 106, 0.75) !important;
+    background: rgba(90, 139, 106, 0.15) !important;
+    color: #b8e6cc !important;
+  }
+
+  .answer-option.wrong {
+    border-color: rgba(193, 39, 45, 0.75) !important;
+    background: rgba(193, 39, 45, 0.13) !important;
+    color: #f08080 !important;
+  }
+
+  .answer-option.reveal {
+    border-color: rgba(90, 139, 106, 0.45) !important;
+    background: rgba(90, 139, 106, 0.08) !important;
+  }
+
+  .answer-option.locked {
+    cursor: not-allowed !important;
+  }
+
+  .feedback {
+    min-height: 34px !important;
+    font-size: 12px !important;
+    color: rgba(245, 234, 214, 0.5) !important;
+  }
+
+  .feedback.good { color: #7ec8a0 !important; }
+  .feedback.error { color: #e08080 !important; }
+
+  .lesson-footer {
+    border-top-color: rgba(245, 234, 214, 0.09) !important;
+    padding-top: 12px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  .lesson-footer strong {
+    font-size: 20px !important;
+  }
+
+  /* Lesson progress dots: gold for new, jade for review */
+  .lesson-progress {
+    gap: 4px;
+  }
+
+  .lesson-progress span {
+    height: 6px !important;
+    border-radius: 3px !important;
+  }
+}

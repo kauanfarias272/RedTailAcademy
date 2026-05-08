@@ -56,6 +56,7 @@ export function DirectionCHeader({
   streak,
   freeze,
   utilitySlot,
+  onErrorsClick,
 }: {
   phaseTag?: string
   title: string
@@ -66,6 +67,7 @@ export function DirectionCHeader({
   streak: number
   freeze: number
   utilitySlot?: ReactNode
+  onErrorsClick?: () => void
 }) {
   return (
     <header className="directionc-header">
@@ -88,12 +90,21 @@ export function DirectionCHeader({
       </h1>
       {sub ? <p className="directionc-subtitle">{sub}</p> : null}
       {errors > 0 ? (
-        <div className="directionc-error-strip">
-          <span className="directionc-error-icon">⚠</span>
-          <span>
-            <strong>{errors} erros</strong> bloqueiam a evolucao do Koi
-          </span>
-        </div>
+        onErrorsClick ? (
+          <button type="button" className="directionc-error-strip directionc-error-btn" onClick={onErrorsClick}>
+            <span className="directionc-error-icon">⚠</span>
+            <span>
+              <strong>{errors} erro{errors === 1 ? '' : 's'}</strong> · toque para corrigir
+            </span>
+          </button>
+        ) : (
+          <div className="directionc-error-strip">
+            <span className="directionc-error-icon">⚠</span>
+            <span>
+              <strong>{errors} erros</strong> bloqueiam a evolucao do Koi
+            </span>
+          </div>
+        )
       ) : null}
     </header>
   )

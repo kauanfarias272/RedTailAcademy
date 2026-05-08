@@ -113,17 +113,16 @@ function lessonReviewIntervalMs(reviewCount: number): number {
   return (intervals[Math.min(reviewCount, intervals.length - 1)] ?? 30) * day
 }
 
-const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen; symbol: string }> = [
+const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen; symbol: string; isKoiCenter?: boolean }> = [
   { id: 'learn', label: 'Trilha', icon: BookOpen, symbol: '本' },
   { id: 'practice', label: 'Treino', icon: Layers3, symbol: '卡' },
-  { id: 'errors', label: 'Erros', icon: AlertTriangle, symbol: '⚠' },
+  { id: 'mascot', label: 'Koi', icon: Fish, symbol: '', isKoiCenter: true },
   { id: 'clan', label: 'Clã', icon: Users, symbol: '族' },
   { id: 'profile', label: 'Ritmo', icon: Trophy, symbol: '節' },
 ]
 
 const secondaryNavItems: Array<{ id: Tab; label: string; icon: typeof BookOpen }> = [
   { id: 'clips', label: 'Cultura', icon: Headphones },
-  { id: 'mascot', label: 'Koi', icon: Fish },
 ]
 
 const cultureFilters: Array<{ id: CultureFilter; label: string }> = [
@@ -1357,7 +1356,7 @@ function App() {
         </div>
 
         <nav>
-          {navItems.map((item) => {
+          {[...navItems, { id: 'errors' as Tab, label: 'Erros', icon: AlertTriangle, symbol: '⚠' }].map((item) => {
             const Icon = item.icon
             const badge = item.id === 'errors' && unresolvedMistakes.length > 0 ? unresolvedMistakes.length : 0
             return (
@@ -1405,6 +1404,7 @@ function App() {
           coins={progress.coins}
           streak={progress.streak}
           freeze={progress.freezeStreaks}
+          onErrorsClick={headerMeta.errors > 0 ? () => setActiveTab('errors') : undefined}
           utilitySlot={
             <>
               <div className="utility-quick-row">
@@ -1647,7 +1647,23 @@ function App() {
       <nav className="bottom-nav" aria-label="Navegacao inferior">
         {navItems.map((item) => {
           const Icon = item.icon
-          const badge = item.id === 'errors' && unresolvedMistakes.length > 0 ? unresolvedMistakes.length : 0
+          const badge = item.id === 'practice' && unresolvedMistakes.length > 0 ? unresolvedMistakes.length : 0
+          if (item.isKoiCenter) {
+            return (
+              <button
+                className={activeTab === item.id ? 'bottom-button koi-center-btn active' : 'bottom-button koi-center-btn'}
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                title={item.label}
+              >
+                <div className="koi-center-inner">
+                  <Icon size={28} strokeWidth={2} />
+                </div>
+                <span className="koi-center-label">{item.label}</span>
+              </button>
+            )
+          }
           return (
             <button
               className={activeTab === item.id ? 'bottom-button active' : 'bottom-button'}
