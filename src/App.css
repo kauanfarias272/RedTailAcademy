@@ -6016,617 +6016,598 @@ body.focus-mode .workspace {
 }
 
 
-/* ─── Koi Widget (Companheiro Koi) ─── */
+/* ================================================================
+   KOI WIDGET  (Companheiro Koi)
+   Fiel ao protótipo HTML: fundo escuro, hero centralizado,
+   animação float, cells quadradas, sem color-mix()
+   ================================================================ */
+
+@keyframes kw-float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+/* ── container ── */
 
 .koi-widget {
-  display: grid;
-  gap: 20px;
-  padding: 0 0 24px;
-  color: #f4e9d8;
-}
-
-/* Hero */
-
-.koi-hero {
-  display: grid;
-  gap: 6px;
-  padding: 20px 20px 0;
-}
-
-.koi-hero-eyebrow {
   display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: 32px;
+  color: #f4ede2;
+  background: #0a0806;
+}
+
+/* ================================================================
+   HERO
+   ================================================================ */
+
+.kw-hero {
+  padding: 14px 20px 20px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  text-align: center;
+  gap: 0;
+}
+
+/* NÍVEL 4 · CONTÍNUA */
+.kw-eyebrow {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 2.5px;
   text-transform: uppercase;
-  color: rgba(244,233,216,0.45);
+  color: #d4a855;
+  margin: 0 0 6px;
 }
 
-.koi-hero-dot { opacity: 0.4; }
-
-.koi-hero-name {
-  margin: 0;
-  font-size: 30px;
+/* variant name — serif, big */
+.kw-vname {
+  font-family: "Noto Serif SC", "Georgia", serif;
+  font-size: 34px;
   font-weight: 700;
   line-height: 1.1;
-  color: #f4e9d8;
-  cursor: pointer;
-  letter-spacing: -0.01em;
+  letter-spacing: -.01em;
+  color: #f4ede2;
+  margin: 0 0 4px;
 }
 
-.koi-hero-name:hover { color: #fff; }
-
-.koi-hero-rename { margin: 4px 0; }
-
-.koi-hero-sub {
-  font-size: 14px;
-  color: rgba(244,233,216,0.52);
-  margin: 0;
+/* 锦鲤 · equilíbrio */
+.kw-vsub {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 12px;
+  opacity: .85;
 }
 
-.koi-hero-stage {
+/* ── fish display ── */
+
+.kw-stage {
   position: relative;
+  width: 100%;
+  height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 240px;
-  margin: 8px 0 4px;
+  margin: 6px 0 10px;
 }
 
-.koi-hero-glow {
+/* blurred radial glow behind fish */
+.kw-glow {
   position: absolute;
-  inset: 0;
+  width: 280px;
+  height: 280px;
   border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--hero-color, #c1272d) 28%, transparent) 0%, transparent 68%);
-  filter: blur(18px);
+  filter: blur(22px);
   pointer-events: none;
 }
 
-.koi-hero-ring {
+/* decorative rings SVG */
+.kw-ring {
   position: absolute;
   inset: 0;
   margin: auto;
   width: 240px;
   height: 240px;
+  opacity: .25;
   pointer-events: none;
 }
 
-.koi-hero-fish-btn {
+/* fish button */
+.kw-fish-btn {
   position: relative;
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
-  width: 260px;
-  height: 162px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.koi-hero-fish-btn .koi-svg {
+/* float animation applied to the SVG inside the button */
+.kw-fish-btn .koi-svg {
   width: 260px;
-  height: 162px;
-  transition: transform 240ms ease;
+  height: 260px;
+  animation: kw-float 4s ease-in-out infinite;
+  filter: drop-shadow(0 0 18px rgba(255,255,255,.10));
 }
 
-.koi-hero-fish-btn:hover .koi-svg { transform: scale(1.04); }
+.kw-fish-blocked .koi-svg {
+  filter: grayscale(.35) brightness(.7);
+  animation: none;
+}
 
-/* Dialogue */
+/* ── custom mascot name ── */
 
-.koi-dialogue {
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.09);
+.kw-name-row {
+  margin: 2px 0 8px;
+}
+
+.kw-name-btn {
+  background: none;
+  border: none;
+  color: rgba(244,237,226,.55);
   font-size: 13px;
-  color: rgba(244,233,216,0.75);
-  line-height: 1.45;
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 300ms ease, transform 300ms ease;
-  pointer-events: none;
-  min-height: 42px;
-}
-
-.koi-dialogue.visible {
-  opacity: 1;
-  transform: none;
-  pointer-events: auto;
-}
-
-.koi-dialogue p { margin: 0; }
-
-/* XP card */
-
-.koi-xp-card {
-  padding: 14px 16px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  margin-top: 4px;
-}
-
-.koi-xp-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 10px;
-}
-
-.koi-xp-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(244,233,216,0.38);
-}
-
-.koi-xp-value {
-  font-size: 15px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.koi-xp-bar-wrap {
-  height: 8px;
-  border-radius: 99px;
-  background: rgba(255,255,255,0.07);
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.koi-xp-bar-fill {
-  height: 100%;
-  border-radius: 99px;
-  background: linear-gradient(90deg, var(--stage-color, #c1272d), color-mix(in srgb, var(--stage-color, #c1272d) 60%, #f0c040));
-  transition: width 600ms cubic-bezier(.34,1.2,.64,1);
-}
-
-.koi-xp-hint {
-  font-size: 11px;
-  color: rgba(244,233,216,0.38);
-  text-align: center;
-  margin: 0;
-}
-
-/* Stat grid */
-
-.koi-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding: 0 20px;
-}
-
-.koi-stat-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 10px 10px 8px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
-}
-
-.koi-stat-card.warn {
-  background: rgba(231,76,60,0.12);
-  border-color: rgba(231,76,60,0.28);
-}
-
-.koi-stat-icon { font-size: 15px; line-height: 1; }
-
-.koi-stat-label {
-  display: block;
-  font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: rgba(244,233,216,0.38);
-  line-height: 1;
-  margin-bottom: 1px;
-}
-
-.koi-stat-card strong {
-  display: block;
-  font-size: 15px;
-  font-weight: 800;
-  color: #f4e9d8;
-  line-height: 1;
-}
-
-/* Evo lock */
-
-.koi-evo-lock {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  margin: 0 20px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(138,28,32,0.4), rgba(26,20,16,0.8));
-  border: 1px solid rgba(231,76,60,0.30);
-}
-
-.koi-evo-lock-icon { font-size: 24px; flex-shrink: 0; }
-
-.koi-evo-lock-copy { flex: 1; }
-
-.koi-evo-lock-copy strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 700;
-  color: #f4e9d8;
-  margin-bottom: 2px;
-}
-
-.koi-evo-lock-copy span {
-  font-size: 12px;
-  color: rgba(244,233,216,0.52);
-}
-
-.koi-evo-lock-chains { display: flex; gap: 4px; flex-shrink: 0; }
-
-.koi-chain-link {
-  width: 22px;
-  height: 5px;
-  border-radius: 3px;
-  background: rgba(231,76,60,0.65);
-}
-
-/* Section headings */
-
-.koi-section-heading {
-  margin: 0;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: rgba(244,233,216,0.36);
-}
-
-.koi-section-heading-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.koi-section-tag {
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(244,233,216,0.30);
-  letter-spacing: 0.04em;
-}
-
-/* Type selector */
-
-.koi-type-scroll {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  margin-top: 10px;
-  scrollbar-width: none;
-}
-
-.koi-type-scroll::-webkit-scrollbar { display: none; }
-
-.koi-type-btn {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 10px 8px;
-  min-width: 80px;
-  border-radius: 14px;
-  border: 1.5px solid rgba(255,255,255,0.07);
-  background: rgba(255,255,255,0.04);
   cursor: pointer;
-  transition: border-color 180ms, background 180ms, transform 120ms;
-  text-align: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color .2s;
 }
 
-.koi-type-btn:hover {
-  background: rgba(255,255,255,0.07);
-  border-color: color-mix(in srgb, var(--fish-color, #fff) 50%, transparent);
-  transform: translateY(-1px);
-}
+.kw-name-btn:hover { color: rgba(244,237,226,.9); }
 
-.koi-type-btn.active {
-  background: color-mix(in srgb, var(--fish-color, #c1272d) 16%, transparent);
-  border-color: var(--fish-color, #c1272d);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--fish-color, #c1272d) 30%, transparent);
-}
+.kw-pencil { font-size: 11px; opacity: .6; }
 
-.koi-type-preview {
-  width: 56px;
-  height: 35px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.koi-type-preview .koi-svg { width: 68px; height: 43px; }
-
-.koi-type-name {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  color: #f4e9d8;
-  white-space: nowrap;
-}
-
-.koi-type-trait {
-  display: block;
-  font-size: 9.5px;
-  color: rgba(244,233,216,0.40);
-  white-space: nowrap;
-}
-
-/* Evolution timeline */
-
-.koi-timeline-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-}
-
-.koi-timeline-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 3px;
-  padding: 8px 4px 6px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  opacity: 0.35;
-  position: relative;
-  min-height: 72px;
-}
-
-.koi-timeline-cell.unlocked {
-  opacity: 1;
-  background: rgba(255,255,255,0.05);
-  border-color: rgba(255,255,255,0.08);
-}
-
-.koi-timeline-cell.current {
-  background: color-mix(in srgb, var(--cell-color, #c1272d) 14%, transparent);
-  border-color: var(--cell-color, #c1272d);
-}
-
-.koi-timeline-fish {
-  width: 48px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.koi-timeline-fish .koi-svg { width: 58px; height: 36px; }
-
-.koi-timeline-lock {
-  font-size: 14px;
-  color: rgba(244,233,216,0.25);
-  margin-bottom: 2px;
-}
-
-.koi-timeline-label {
-  font-size: 9px;
-  font-weight: 700;
-  color: rgba(244,233,216,0.38);
-  letter-spacing: 0.04em;
-}
-
-.koi-timeline-cell.current .koi-timeline-label { color: var(--cell-color, #c1272d); }
-
-.koi-timeline-dot {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-}
-
-/* Conquistas */
-
-.koi-milestones { display: grid; gap: 8px; }
-
-.koi-milestone-chip {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-.koi-milestone-icon { font-size: 20px; flex-shrink: 0; line-height: 1; }
-
-.koi-milestone-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 700;
-  color: #f4e9d8;
-}
-
-.koi-milestone-sub {
-  display: block;
-  font-size: 11px;
-  color: rgba(244,233,216,0.42);
-  margin-top: 1px;
-}
-
-.koi-empty-hint {
-  font-size: 12px;
-  color: rgba(244,233,216,0.35);
-  font-style: italic;
-  margin: 0;
-  padding: 10px 0;
-}
-
-/* Alt path */
-
-.koi-alt-path {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  margin: 0 20px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
-}
-
-.koi-alt-path .eyebrow {
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(244,233,216,0.38);
-  margin-bottom: 2px;
-}
-
-.koi-alt-path strong { display: block; font-size: 14px; color: #f4e9d8; }
-.koi-alt-path small { display: block; font-size: 11px; color: rgba(244,233,216,0.42); }
-
-.koi-alt-path button {
-  padding: 8px 16px;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: #f4e9d8;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 160ms;
-  flex-shrink: 0;
-}
-
-.koi-alt-path button:hover:not(:disabled) { background: rgba(255,255,255,0.12); }
-.koi-alt-path button:disabled { opacity: 0.35; cursor: not-allowed; }
-
-/* Accessories */
-
-.koi-widget .mascot-accessories { display: grid; gap: 6px; padding: 0 20px; }
-
-.koi-widget .mascot-accessories .eyebrow {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(244,233,216,0.38);
-}
-
-.koi-widget .mascot-acc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-
-.koi-widget .mascot-acc-chip {
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.10);
-  font-size: 11px;
-  color: rgba(244,233,216,0.75);
-}
-
-/* Lore */
-
-.koi-widget .mascot-lore {
-  font-size: 12px;
-  color: rgba(244,233,216,0.38);
-  line-height: 1.5;
-  font-style: italic;
-  margin: 0;
-  padding: 0 20px;
-}
-
-/* Rename input */
-
-.koi-hero-rename {
+.kw-rename {
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
-.koi-hero-rename input {
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.15);
+.kw-rename input {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.18);
   border-radius: 8px;
-  color: #f4e9d8;
+  color: #f4ede2;
   padding: 7px 12px;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   outline: none;
   flex: 1;
   min-width: 0;
 }
 
-.koi-hero-rename button {
+.kw-rename button {
   padding: 7px 14px;
   border-radius: 8px;
-  background: rgba(193,39,45,0.55);
+  background: #c1272d;
   border: none;
   color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── dialogue bubble ── */
+
+.kw-dialogue {
+  margin: 0 0 10px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: #1a1410;
+  border: 1px solid rgba(212,168,85,.18);
+  font-size: 13px;
+  color: rgba(244,237,226,.75);
+  line-height: 1.5;
+  max-width: 100%;
+  animation: kw-slide-in 220ms ease;
+}
+
+@keyframes kw-slide-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.kw-dialogue p { margin: 0; }
+
+/* ── XP card ── */
+
+.kw-xp-card {
+  width: 100%;
+  padding: 14px 16px;
+  background: #1a1410;
+  border: 1px solid rgba(212,168,85,.12);
+  border-radius: 14px;
+  margin-top: 4px;
+}
+
+.kw-xp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.kw-xp-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(212,168,85,.65);
+}
+
+.kw-xp-val {
+  font-family: "Noto Serif SC", serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.kw-xp-track {
+  height: 8px;
+  background: #13100c;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.kw-xp-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 600ms cubic-bezier(.34,1.2,.64,1);
+}
+
+.kw-xp-hint {
+  font-size: 11px;
+  color: #6b6054;
+  text-align: center;
+  margin: 0;
+}
+
+/* ================================================================
+   GENERIC SECTION
+   ================================================================ */
+
+.kw-section {
+  padding: 18px 20px 0;
+}
+
+.kw-sec-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #6b6054;
+  margin: 0 0 12px;
+}
+
+/* ================================================================
+   TYPE SELECTOR
+   ================================================================ */
+
+.kw-type-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.kw-type-scroll::-webkit-scrollbar { display: none; }
+
+.kw-type-btn {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 12px 8px;
+  min-width: 78px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(212,168,85,.12);
+  background: #1a1410;
+  cursor: pointer;
+  transition: border-color .18s, background .18s, transform .12s;
+}
+
+.kw-type-btn:hover {
+  background: #221a13;
+  transform: translateY(-2px);
+}
+
+.kw-type-fish {
+  width: 54px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.kw-type-fish .koi-svg {
+  width: 66px;
+  height: 66px;
+}
+
+.kw-type-nm {
+  font-size: 10px;
+  font-weight: 600;
+  color: #f4ede2;
+  white-space: nowrap;
+}
+
+/* ================================================================
+   EVO LOCK
+   ================================================================ */
+
+.kw-lock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 20px 0;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(138,28,32,.4), #1a1410);
+  border: 1px solid rgba(193,39,45,.35);
+  border-radius: 14px;
+}
+
+.kw-lock-ico { font-size: 26px; flex-shrink: 0; }
+
+.kw-lock-copy { flex: 1; }
+
+.kw-lock-copy strong {
+  display: block;
+  font-family: "Noto Serif SC", serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f4ede2;
+  margin-bottom: 3px;
+}
+
+.kw-lock-copy span {
+  font-size: 11.5px;
+  color: #a89580;
+}
+
+.kw-chains { display: flex; gap: 5px; flex-shrink: 0; }
+
+.kw-chain {
+  width: 26px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(193,39,45,.65);
+}
+
+/* ================================================================
+   EVOLUTION TIMELINE
+   ================================================================ */
+
+.kw-timeline {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.kw-tl-cell {
+  aspect-ratio: 1;
+  background: #1a1410;
+  border: 1px solid rgba(212,168,85,.12);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 4px 5px;
+  opacity: .4;
+  position: relative;
+}
+
+.kw-tl-cell.on  { opacity: 1; background: #221a13; border-color: rgba(212,168,85,.2); }
+.kw-tl-cell.cur { opacity: 1; }
+
+.kw-tl-fish {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.kw-tl-fish .koi-svg { width: 54px; height: 54px; }
+
+.kw-tl-lock { font-size: 16px; color: #6b6054; }
+
+.kw-tl-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: #6b6054;
+  letter-spacing: .04em;
+}
+
+/* ================================================================
+   STATS
+   ================================================================ */
+
+.kw-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.kw-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 10px 8px;
+  border-radius: 10px;
+  background: #1a1410;
+  border: 1px solid rgba(212,168,85,.10);
+}
+
+.kw-stat.warn {
+  background: rgba(193,39,45,.14);
+  border-color: rgba(193,39,45,.30);
+}
+
+.kw-stat > span { font-size: 14px; line-height: 1; }
+
+.kw-stat > small {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #6b6054;
+  line-height: 1;
+}
+
+.kw-stat > strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  color: #f4ede2;
+  line-height: 1;
+}
+
+/* ================================================================
+   CONQUISTAS
+   ================================================================ */
+
+.kw-milestones { display: grid; gap: 8px; }
+
+.kw-milestone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #1a1410;
+  border: 1px solid rgba(212,168,85,.10);
+}
+
+.kw-milestone > span { font-size: 20px; flex-shrink: 0; }
+
+.kw-milestone strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f4ede2;
+}
+
+.kw-milestone small {
+  display: block;
+  font-size: 11px;
+  color: #a89580;
+  margin-top: 1px;
+}
+
+.kw-empty {
+  font-size: 12px;
+  color: #6b6054;
+  font-style: italic;
+  margin: 0;
+}
+
+/* ================================================================
+   ACCESSORIES
+   ================================================================ */
+
+.kw-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.kw-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.09);
+  font-size: 11px;
+  color: rgba(244,237,226,.70);
+}
+
+/* ================================================================
+   LORE
+   ================================================================ */
+
+.kw-lore {
+  font-size: 12px;
+  color: #6b6054;
+  line-height: 1.55;
+  font-style: italic;
+  margin: 18px 20px 0;
+}
+
+/* ================================================================
+   ALT PATH
+   ================================================================ */
+
+.kw-alt {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin: 18px 20px 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(212,168,85,.12);
+}
+
+.kw-alt small.kw-sec-label { display: block; margin-bottom: 2px; }
+
+.kw-alt strong {
+  display: block;
+  font-size: 14px;
+  color: #f4ede2;
+}
+
+.kw-alt small {
+  display: block;
+  font-size: 11px;
+  color: #a89580;
+}
+
+.kw-alt button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  color: #f4ede2;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-/* Section padding for child divs */
+.kw-alt button:hover:not(:disabled) { background: rgba(255,255,255,.10); }
 
-.koi-widget > div {
-  padding-left: 20px;
-  padding-right: 20px;
-}
+.kw-alt button:disabled { opacity: .35; cursor: not-allowed; }
 
-/* Override for elements that already have their own h-padding */
+/* ================================================================
+   SRS REVIEW (lesson progress bar)
+   ================================================================ */
 
-.koi-widget > .koi-hero,
-.koi-widget > .koi-stat-grid,
-.koi-widget > .koi-evo-lock,
-.koi-widget > .koi-alt-path,
-.koi-widget > .mascot-accessories,
-.koi-widget > .mascot-lore {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-/* Dialogue bubble override */
-
-.koi-widget .mascot-bubble {
-  background: rgba(255,255,255,0.07);
-  border-color: rgba(255,255,255,0.12);
-  color: #f4e9d8;
-}
-
-.koi-widget .mascot-bubble p { color: #f4e9d8; }
-
-/* SRS review progress */
-
-.lesson-progress span.review { background: rgba(90, 139, 106, 0.22); }
+.lesson-progress span.review { background: rgba(90,139,106,.20); }
 .lesson-progress span.review.active { background: var(--c-jade); }
 .lesson-progress span.new.active    { background: var(--c-gold); }
 .lesson-method-card.review span     { color: var(--c-jade); }
 
-@media (max-width: 560px) {
-  .koi-stat-grid { grid-template-columns: 1fr 1fr; }
-  .koi-hero-stage { height: 200px; }
-  .koi-hero-fish-btn .koi-svg { width: 210px; height: 131px; }
-  .koi-hero-ring { width: 200px; height: 200px; }
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+
+@media (max-width: 540px) {
+  .kw-stats { grid-template-columns: 1fr 1fr; }
+
+  .kw-hero { padding: 10px 16px 18px; }
+
+  .kw-stage { height: 200px; }
+
+  .kw-fish-btn .koi-svg { width: 210px; height: 210px; }
+
+  .kw-ring { width: 200px; height: 200px; }
 }
