@@ -16,6 +16,8 @@ export type Lesson = {
   xp: number
   minutes: number
   phrases: Phrase[]
+  reviewPhraseIds?: string[]
+  curiosity?: string
 }
 
 export type Unit = {
@@ -178,6 +180,7 @@ export const lessons: Lesson[] = [
     focus: 'ma nos tons 1, 2, 3 e 4 + pares minimos',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['ni-hao', 'wo-hen-hao'],
     phrases: [
       { id: 'ma-tones', hanzi: '妈 麻 马 骂', pinyin: 'mā má mǎ mà', portuguese: 'mae, canhamo, cavalo, xingar', literal: 'quatro tons com ma', note: 'A mesma silaba muda de significado quando o tom muda.', tonePattern: '1-2-3-4' },
       { id: 'shi-tones', hanzi: '是 十 事', pinyin: 'shì shí shì', portuguese: 'ser, dez, assunto', literal: 'sons parecidos, tons diferentes', note: 'Ouvir pares minimos ajuda a separar significado por tom.', tonePattern: '4-2-4' },
@@ -193,6 +196,7 @@ export const lessons: Lesson[] = [
     focus: 'zh, ch, sh, r retroflexos',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['ma-tones', 'shi-tones'],
     phrases: [
       { id: 'zhong-guo', hanzi: '中国', pinyin: 'Zhōngguó', portuguese: 'China', literal: 'pais do meio', note: 'zh tem a lingua enrolada para tras, diferente de z.', tonePattern: '1-2' },
       { id: 'ren', hanzi: '人', pinyin: 'rén', portuguese: 'pessoa', literal: 'pessoa', note: 'O r em mandarim fica entre r, zh e um som mais retroflexo.', tonePattern: '2' },
@@ -209,6 +213,7 @@ export const lessons: Lesson[] = [
     focus: 'a, ao, ang e tom neutro',
     xp: 20,
     minutes: 6,
+    reviewPhraseIds: ['zhong-guo', 'ren'],
     phrases: [
       { id: 'ba-ba', hanzi: '爸爸', pinyin: 'bàba', portuguese: 'pai', literal: 'pai', note: 'A segunda silaba fica leve; nao vire tom forte de novo.', tonePattern: '4-0' },
       { id: 'ma-ma', hanzi: '妈妈', pinyin: 'māma', portuguese: 'mae', literal: 'mae', note: 'Repita devagar e depois natural; segundo ma curto.', tonePattern: '1-0' },
@@ -224,6 +229,7 @@ export const lessons: Lesson[] = [
     focus: 'ola, boa noite, ate logo',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['ni-hao', 'chi-fan-quick'],
     phrases: [
       { id: 'zao-shang-hao', hanzi: '早上好', pinyin: 'zǎoshang hǎo', portuguese: 'bom dia', literal: 'manha boa', note: 'Usado pela manha; ni hao funciona o dia todo.', tonePattern: '3-0-3' },
       { id: 'wan-shang-hao', hanzi: '晚上好', pinyin: 'wǎnshang hǎo', portuguese: 'boa noite (cumprimento)', literal: 'noite boa', note: 'Cumprimento, nao despedida; para "tchau a noite" use 晚安.', tonePattern: '3-0-3' },
@@ -240,6 +246,7 @@ export const lessons: Lesson[] = [
     focus: 'obrigado, desculpa, por favor',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['ni-hao', 'zai-jian'],
     phrases: [
       { id: 'xie-xie', hanzi: '谢谢', pinyin: 'xièxie', portuguese: 'obrigado', literal: 'agradecer', note: 'A segunda silaba fica mais leve.', tonePattern: '4-0' },
       { id: 'bu-ke-qi', hanzi: '不客气', pinyin: 'bú kèqi', portuguese: 'de nada', literal: 'nao seja cerimonioso', note: 'Resposta padrao a 谢谢.', tonePattern: '2-4-0' },
@@ -256,6 +263,7 @@ export const lessons: Lesson[] = [
     focus: 'particula 吗 e palavras-pergunta',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['xie-xie', 'ni-hao-ma-greet'],
     phrases: [
       { id: 'ni-hao-ma', hanzi: '你好吗？', pinyin: 'nǐ hǎo ma?', portuguese: 'voce esta bem?', literal: 'voce bom pergunta', note: 'ma transforma uma afirmacao em pergunta sim/nao.', tonePattern: '3-3-0' },
       { id: 'shen-me', hanzi: '什么？', pinyin: 'shénme?', portuguese: 'o que?', literal: 'que coisa', note: 'Uma das palavras de pergunta mais frequentes.', tonePattern: '2-0' },
@@ -272,6 +280,7 @@ export const lessons: Lesson[] = [
     focus: 'perguntar com educacao e achar lugares',
     xp: 24,
     minutes: 8,
+    reviewPhraseIds: ['dui-bu-qi', 'qing'],
     phrases: [
       { id: 'qing-wen', hanzi: '请问', pinyin: 'qǐngwèn', portuguese: 'com licenca', literal: 'por favor perguntar', note: 'Use antes de perguntas para soar educado com desconhecidos.', tonePattern: '3-4' },
       { id: 'ce-suo-zai-na-li', hanzi: '厕所在哪里？', pinyin: 'cèsuǒ zài nǎli?', portuguese: 'onde fica o banheiro?', literal: 'banheiro estar onde', note: '在哪里 e um bloco pronto para perguntar onde algo fica.', tonePattern: '4-3-4-3-0' },
@@ -288,6 +297,7 @@ export const lessons: Lesson[] = [
     focus: 'contagem e reconhecimento auditivo',
     xp: 20,
     minutes: 6,
+    reviewPhraseIds: ['ni-hao', 'xie-xie'],
     phrases: [
       { id: 'yi-er-san', hanzi: '一 二 三', pinyin: 'yī èr sān', portuguese: 'um, dois, tres', literal: '1 2 3', note: 'yi muda de tom em combinacoes, mas memorize o som base primeiro.', tonePattern: '1-4-1' },
       { id: 'si-wu-liu', hanzi: '四 五 六', pinyin: 'sì wǔ liù', portuguese: 'quatro, cinco, seis', literal: '4 5 6', note: 'si exige a lingua atras dos dentes — som de "ss" sem vogal forte.', tonePattern: '4-3-4' },
@@ -304,6 +314,7 @@ export const lessons: Lesson[] = [
     focus: 'preco, demonstrativos e barganha',
     xp: 24,
     minutes: 8,
+    reviewPhraseIds: ['yi-er-san', 'na-li'],
     phrases: [
       { id: 'duo-shao-qian', hanzi: '多少钱？', pinyin: 'duōshao qián?', portuguese: 'quanto custa?', literal: 'quanto dinheiro', note: 'Frase pronta para lojas, mercados e taxis.', tonePattern: '1-0-2' },
       { id: 'zhe-ge', hanzi: '这个', pinyin: 'zhège', portuguese: 'este', literal: 'este item', note: 'Muito usado apontando para algo que voce quer.', tonePattern: '4-0' },
@@ -320,6 +331,7 @@ export const lessons: Lesson[] = [
     focus: 'quero, uma unidade, classificadores',
     xp: 24,
     minutes: 8,
+    reviewPhraseIds: ['duo-shao-qian', 'zhe-ge'],
     phrases: [
       { id: 'wo-yao', hanzi: '我要', pinyin: 'wǒ yào', portuguese: 'eu quero', literal: 'eu querer', note: 'Funciona para pedidos diretos; com educacao adicione 请.', tonePattern: '3-4' },
       { id: 'yi-bei-shui', hanzi: '一杯水', pinyin: 'yì bēi shuǐ', portuguese: 'um copo de agua', literal: 'um copo agua', note: '杯 e o classificador para copos e bebidas.', tonePattern: '4-1-3' },
@@ -336,6 +348,7 @@ export const lessons: Lesson[] = [
     focus: 'horas, agora e amanha',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['wo-yao', 'shi'],
     phrases: [
       { id: 'san-dian', hanzi: '三点', pinyin: 'sān diǎn', portuguese: 'tres horas', literal: 'tres ponto', note: '点 marca horas cheias: 三点 = tres horas.', tonePattern: '1-3' },
       { id: 'ming-tian-shi-dian', hanzi: '明天十点', pinyin: 'míngtiān shí diǎn', portuguese: 'amanha as dez', literal: 'amanha dez horas', note: 'O tempo (manha/amanha) vem antes do horario.', tonePattern: '2-1-2-3' },
@@ -352,6 +365,7 @@ export const lessons: Lesson[] = [
     focus: 'casa, irmaos e relacoes proximas',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['ba-ba', 'ma-ma'],
     phrases: [
       { id: 'wo-de-jia', hanzi: '我的家', pinyin: 'wǒ de jiā', portuguese: 'minha familia / minha casa', literal: 'eu possessivo casa', note: 'jia pode ser casa ou familia dependendo do contexto.', tonePattern: '3-0-1' },
       { id: 'peng-you', hanzi: '朋友', pinyin: 'péngyou', portuguese: 'amigo', literal: 'amigo', note: 'A segunda silaba e neutra na fala comum.', tonePattern: '2-0' },
@@ -367,6 +381,7 @@ export const lessons: Lesson[] = [
     focus: 'comer, beber, classificadores de comida',
     xp: 24,
     minutes: 8,
+    reviewPhraseIds: ['chi-fan-quick', 'wo-yao-zhe-ge'],
     phrases: [
       { id: 'chi-fan', hanzi: '吃饭', pinyin: 'chī fàn', portuguese: 'comer / fazer refeicao', literal: 'comer arroz', note: 'Chifan virou uma expressao geral para fazer uma refeicao.', tonePattern: '1-4' },
       { id: 'he-shui', hanzi: '喝水', pinyin: 'hē shuǐ', portuguese: 'beber agua', literal: 'beber agua', note: 'h em he e aspirado, com ar saindo claro.', tonePattern: '1-3' },
@@ -384,6 +399,7 @@ export const lessons: Lesson[] = [
     focus: 'tempo do dia e marcadores',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['san-dian', 'xie-xie'],
     phrases: [
       { id: 'jin-tian', hanzi: '今天', pinyin: 'jīntiān', portuguese: 'hoje', literal: 'este dia', note: 'j exige a lingua mais alta, perto do som "tji".', tonePattern: '1-1' },
       { id: 'ming-tian', hanzi: '明天', pinyin: 'míngtiān', portuguese: 'amanha', literal: 'dia claro', note: 'Util para combinar horarios simples.', tonePattern: '2-1' },
@@ -399,6 +415,7 @@ export const lessons: Lesson[] = [
     focus: 'sentimentos basicos, cansaco, fome',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['wo-hen-hao', 'mei-guan-xi'],
     phrases: [
       { id: 'wo-lei-le', hanzi: '我累了', pinyin: 'wǒ lèi le', portuguese: 'estou cansado', literal: 'eu cansado mudanca', note: '了 marca que o estado mudou: agora estou cansado.', tonePattern: '3-4-0' },
       { id: 'wo-xiang-xiu-xi', hanzi: '我想休息', pinyin: 'wǒ xiǎng xiūxi', portuguese: 'quero descansar', literal: 'eu querer descansar', note: '想 suaviza o pedido e funciona bem antes de verbos.', tonePattern: '3-3-1-0' },
@@ -414,6 +431,7 @@ export const lessons: Lesson[] = [
     focus: 'pronomes pessoais e plural',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['ni-hao', 'xie-xie'],
     phrases: [
       { id: 'ta-shi-shei', hanzi: '他是谁？', pinyin: 'tā shì shéi?', portuguese: 'quem e ele?', literal: 'ele ser quem', note: '谁 pergunta sobre pessoa. Troque 他 por 她 para falar dela.', tonePattern: '1-4-2' },
       { id: 'ta-shi-wo-pengyou', hanzi: '她是我朋友', pinyin: 'tā shì wǒ péngyou', portuguese: 'ela e minha amiga', literal: 'ela ser eu amiga', note: 'Em fala simples, 我朋友 funciona como "minha amiga" sem 的.', tonePattern: '1-4-3-2-0' },
@@ -429,6 +447,7 @@ export const lessons: Lesson[] = [
     focus: 'familia, pai, mae, todos',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['ba-ba', 'peng-you'],
     phrases: [
       { id: 'wo-ai-wo-de-jia', hanzi: '我爱我的家', pinyin: 'wǒ ài wǒ de jiā', portuguese: 'eu amo minha familia', literal: 'eu amar minha casa/familia', note: '爱 e direto; 家 pode ser casa ou familia pelo contexto.', tonePattern: '3-4-3-0-1' },
       { id: 'ba-ma-dou-hao', hanzi: '爸爸妈妈都好', pinyin: 'bàba māma dōu hǎo', portuguese: 'papai e mamae estao bem', literal: 'pai mae todos bem', note: '都 marca que a ideia vale para todos no grupo.', tonePattern: '4-0-1-0-1-3' },
@@ -444,6 +463,7 @@ export const lessons: Lesson[] = [
     focus: 'profissao escolar basica',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['lao-shi', 'ba-ba'],
     phrases: [
       { id: 'ta-shi-laoshi', hanzi: '他是老师', pinyin: 'tā shì lǎoshī', portuguese: 'ele e professor', literal: 'ele ser professor', note: '老师 e uma das primeiras palavras sociais do HSK1.', tonePattern: '1-4-3-1' },
       { id: 'wo-shi-xuesheng', hanzi: '我是学生', pinyin: 'wǒ shì xuésheng', portuguese: 'eu sou estudante', literal: 'eu ser estudante', note: '学生 tem segunda silaba leve na fala natural.', tonePattern: '3-4-2-0' },
@@ -459,6 +479,7 @@ export const lessons: Lesson[] = [
     focus: 'estudar, chines, falar',
     xp: 24,
     minutes: 8,
+    reviewPhraseIds: ['zhong-guo', 'ni-hao-ma-greet'],
     phrases: [
       { id: 'wo-xuexi-zhongwen', hanzi: '我学习中文', pinyin: 'wǒ xuéxí Zhōngwén', portuguese: 'eu estudo chines', literal: 'eu estudar lingua chinesa', note: '学习 e o verbo base para estudar; 中文 e a lingua chinesa.', tonePattern: '3-2-2-1-2' },
       { id: 'ni-hui-shuo-zhongwen-ma', hanzi: '你会说中文吗？', pinyin: 'nǐ huì shuō Zhōngwén ma?', portuguese: 'voce sabe falar chines?', literal: 'voce saber falar chines pergunta', note: '会 fala de habilidade: saber/conseguir fazer algo.', tonePattern: '3-4-1-1-2-0' },
@@ -475,6 +496,7 @@ export const lessons: Lesson[] = [
     focus: 'livro, mesa, computador, posicao',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['wo-xuexi-zhongwen', 'zhe-ge'],
     phrases: [
       { id: 'zhe-shi-wo-de-shu', hanzi: '这是我的书', pinyin: 'zhè shì wǒ de shū', portuguese: 'este e meu livro', literal: 'isto ser meu livro', note: '这是... apresenta objetos de forma simples.', tonePattern: '4-4-3-0-1' },
       { id: 'diannao-zai-zhuozi-shang', hanzi: '电脑在桌子上', pinyin: 'diànnǎo zài zhuōzi shàng', portuguese: 'o computador esta em cima da mesa', literal: 'computador estar mesa em cima', note: '在 + lugar localiza coisas; 上 marca "em cima".', tonePattern: '4-3-4-1-0-4' },
@@ -490,6 +512,7 @@ export const lessons: Lesson[] = [
     focus: 'verbos de estudo',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['han-yu', 'qing'],
     phrases: [
       { id: 'wo-kan-shu', hanzi: '我看书', pinyin: 'wǒ kàn shū', portuguese: 'eu leio livro', literal: 'eu olhar livro', note: '看 cobre ver/olhar/ler dependendo do objeto.', tonePattern: '3-4-1' },
       { id: 'qing-xie-hanzi', hanzi: '请写汉字', pinyin: 'qǐng xiě hànzì', portuguese: 'por favor escreva hanzi', literal: 'por favor escrever caracteres chineses', note: '请 deixa o comando educado; 写 e escrever.', tonePattern: '3-3-4-4' },
@@ -505,6 +528,7 @@ export const lessons: Lesson[] = [
     focus: 'ir, vir, perto, longe',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['na-li', 'jin-tian'],
     phrases: [
       { id: 'wo-qu-xuexiao', hanzi: '我去学校', pinyin: 'wǒ qù xuéxiào', portuguese: 'eu vou para a escola', literal: 'eu ir escola', note: '去 + lugar: estrutura limpa para destino.', tonePattern: '3-4-2-4' },
       { id: 'ta-lai-zhongguo', hanzi: '他来中国', pinyin: 'tā lái Zhōngguó', portuguese: 'ele vem para a China', literal: 'ele vir China', note: '来 = movimento vindo para perto do falante/contexto.', tonePattern: '1-2-1-2' },
@@ -520,6 +544,7 @@ export const lessons: Lesson[] = [
     focus: 'transporte e direcao',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['wo-qu-xuexiao', 'ce-suo-zai-na-li'],
     phrases: [
       { id: 'wo-zuo-chuzuche', hanzi: '我坐出租车', pinyin: 'wǒ zuò chūzūchē', portuguese: 'eu vou de taxi', literal: 'eu sentar taxi', note: '坐 e usado para transporte: sentar/pegar um veiculo.', tonePattern: '3-4-1-1-1' },
       { id: 'huochezhan-zai-nali', hanzi: '火车站在哪里？', pinyin: 'huǒchēzhàn zài nǎli?', portuguese: 'onde fica a estacao de trem?', literal: 'estacao de trem estar onde', note: '在哪里 reaparece: troque o lugar e a pergunta continua pronta.', tonePattern: '3-1-4-4-3-0' },
@@ -535,6 +560,7 @@ export const lessons: Lesson[] = [
     focus: 'loja, comprar, fruta, dinheiro',
     xp: 24,
     minutes: 8,
+    reviewPhraseIds: ['duo-shao-qian', 'wo-yao'],
     phrases: [
       { id: 'shangdian-you-shui', hanzi: '商店有水', pinyin: 'shāngdiàn yǒu shuǐ', portuguese: 'a loja tem agua', literal: 'loja ter agua', note: '有 marca existencia/posse: tem, ha.', tonePattern: '1-4-3-3' },
       { id: 'wo-yao-mai-shuiguo', hanzi: '我要买水果', pinyin: 'wǒ yào mǎi shuǐguǒ', portuguese: 'eu quero comprar frutas', literal: 'eu querer comprar fruta', note: '买 e comprar; 水果 junta agua+fruto, mas significa fruta.', tonePattern: '3-4-3-3-3' },
@@ -551,6 +577,7 @@ export const lessons: Lesson[] = [
     focus: 'dias da semana e marcadores',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['jin-tian', 'xian-zai'],
     phrases: [
       { id: 'jintian-xingqi-yi', hanzi: '今天星期一', pinyin: 'jīntiān xīngqī yī', portuguese: 'hoje e segunda-feira', literal: 'hoje semana um', note: '星期 + numero (1-6) forma os dias; domingo e 星期天.', tonePattern: '1-1-1-1-1' },
       { id: 'xianzai-ba-dian', hanzi: '现在八点', pinyin: 'xiànzài bā diǎn', portuguese: 'agora sao oito horas', literal: 'agora oito horas', note: '现在 coloca a frase no presente imediato.', tonePattern: '4-4-1-3' },
@@ -566,6 +593,7 @@ export const lessons: Lesson[] = [
     focus: 'clima, chuva, quente, frio',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['jintian-xingqi-yi', 'wo-hen-hao'],
     phrases: [
       { id: 'tianqi-hen-hao', hanzi: '天气很好', pinyin: 'tiānqì hěn hǎo', portuguese: 'o tempo esta bom', literal: 'tempo muito bom', note: '天气 e clima; 很 suaviza adjetivos.', tonePattern: '1-4-3-3' },
       { id: 'xianzai-xia-yu', hanzi: '现在下雨', pinyin: 'xiànzài xià yǔ', portuguese: 'agora esta chovendo', literal: 'agora cair chuva', note: '下雨 e o bloco comum para chover.', tonePattern: '4-4-4-3' },
@@ -581,6 +609,7 @@ export const lessons: Lesson[] = [
     focus: 'gostar, saber fazer, um pouco',
     xp: 22,
     minutes: 7,
+    reviewPhraseIds: ['ni-hui-shuo-zhongwen-ma', 'tianqi-hen-hao'],
     phrases: [
       { id: 'ke-yi', hanzi: '可以', pinyin: 'kěyǐ', portuguese: 'pode (permissao)', literal: 'poder', note: 'Use 可以 para pedir permissao; 我可以... ma? = posso...?', tonePattern: '3-3' },
       { id: 'bu-hui', hanzi: '不会', pinyin: 'bú huì', portuguese: 'nao sei (fazer)', literal: 'nao habilidade', note: 'Resposta a 你会...吗? para dizer que nao sabe.', tonePattern: '2-4' },
@@ -613,6 +642,7 @@ export const lessons: Lesson[] = [
     focus: 'dialogo de apresentacao completo',
     xp: 28,
     minutes: 9,
+    reviewPhraseIds: ['ni-hao', 'xie-xie'],
     phrases: [
       { id: 'ni-jiao-shenme-mingzi', hanzi: '你叫什么名字？', pinyin: 'nǐ jiào shénme míngzi?', portuguese: 'qual e o seu nome?', literal: 'voce chamar que nome', note: '叫什么名字 e pergunta padrao de apresentacao.', tonePattern: '3-4-2-0-2-0' },
       { id: 'wo-jiao-kauan', hanzi: '我叫卡蓝', pinyin: 'wǒ jiào Kǎlán', portuguese: 'me chamo Kauan', literal: 'eu chamar Kauan', note: 'Troque 卡蓝 pelo seu nome chines ou transliterado.', tonePattern: '3-4-3-2' },
@@ -630,6 +660,7 @@ export const lessons: Lesson[] = [
     focus: 'pais, idade, anos',
     xp: 28,
     minutes: 9,
+    reviewPhraseIds: ['ni-jiao-shenme-mingzi', 'ren-shi-ni-hen-gao-xing'],
     phrases: [
       { id: 'ni-shi-na-guo-ren', hanzi: '你是哪国人？', pinyin: 'nǐ shì nǎ guó rén?', portuguese: 'de que pais voce e?', literal: 'voce ser qual pais pessoa', note: '哪国人 pergunta nacionalidade de forma compacta.', tonePattern: '3-4-3-2-2' },
       { id: 'wo-ershi-sui', hanzi: '我二十岁', pinyin: 'wǒ èrshí suì', portuguese: 'eu tenho vinte anos', literal: 'eu vinte anos', note: '岁 marca idade; nao precisa de verbo "ter".', tonePattern: '3-4-2-4' },
@@ -646,6 +677,7 @@ export const lessons: Lesson[] = [
     focus: 'morar, cidade, lugar, ja',
     xp: 28,
     minutes: 9,
+    reviewPhraseIds: ['ni-shi-na-guo-ren', 'wo-jiao-kauan'],
     phrases: [
       { id: 'ni-zhu-zai-nar', hanzi: '你住在哪儿？', pinyin: 'nǐ zhù zài nǎr?', portuguese: 'onde voce mora?', literal: 'voce morar em onde', note: '住在 + lugar monta a frase de moradia. 哪儿 e variante de 哪里.', tonePattern: '3-4-4-3' },
       { id: 'wo-zhu-zai-beijing', hanzi: '我住在北京', pinyin: 'wǒ zhù zài Běijīng', portuguese: 'eu moro em Pequim', literal: 'eu morar em Pequim', note: 'Troque 北京 pela cidade que voce quer dizer.', tonePattern: '3-4-4-3-1' },

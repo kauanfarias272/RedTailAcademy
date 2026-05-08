@@ -56,19 +56,21 @@ import {
 } from './content'
 import {
   hasOpenMistakes,
+  formatSrsDelay,
   nextDueDate,
   normalizeDailyGoals,
   personalGoals,
   progressLevel,
   recordMistake,
   resolveMistake,
+  srsDelayMs,
   updateStudyStreak,
   useStoredProgress,
   useToday,
   type LearningMistake,
   type LearningProgress,
 } from './progress'
-import { checkInactivity, getStageAccessories, onLessonComplete, onCardReview } from './mascot'
+import { checkInactivity, onLessonComplete, onCardReview } from './mascot'
 import { MascotWidget } from './MascotWidget'
 import { playCorrect, playLessonComplete, playLevelUp, playWrong, unlockAudioOnFirstGesture } from './sound'
 import { useFocusMode } from './focusMode'
@@ -104,7 +106,11 @@ type MandarinSpeechPlugin = {
 
 const MandarinTts = registerPlugin<MandarinTtsPlugin>('MandarinTts')
 const MandarinSpeech = registerPlugin<MandarinSpeechPlugin>('MandarinSpeech')
-const LESSON_REVIEW_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000
+function lessonReviewIntervalMs(reviewCount: number): number {
+  const day = 24 * 60 * 60 * 1000
+  const intervals = [1, 3, 7, 14, 30]
+  return (intervals[Math.min(reviewCount, intervals.length - 1)] ?? 30) * day
+}
 
 const navItems: Array<{ id: Tab; label: string; icon: typeof BookOpen; symbol: string }> = [
   { id: 'learn', label: 'Trilha', icon: BookOpen, symbol: '本' },
@@ -165,7 +171,6 @@ const chunkBlankAnswers = chunks.map((chunk) => chunk.blankAnswer)
 const writingStructureOptions = writingCharacters.map((character) => `${character.strokes} tracos com estrutura de ${character.character}`)
 
 const FREEZE_COST = 80
-const MASCOT_SWITCH_COST = 300
 const WRITING_MIN_PATH = 220
 
 type DrawPoint = {
@@ -544,6 +549,12 @@ function App() {
     () => unlockedCards.filter((phrase) => {
       const card = progress.cards[phrase.id]
       return !card || card.dueAt <= now
+    }).sort((left, right) => {
+      const leftCard = progress.cards[left.id]
+      const rightCard = progress.cards[right.id]
+      const leftDueAt = leftCard?.dueAt ?? 0
+      const rightDueAt = rightCard?.dueAt ?? 0
+      return leftDueAt - rightDueAt || (leftCard?.reviewed ?? 0) - (rightCard?.reviewed ?? 0)
     }),
     [now, progress.cards, unlockedCards],
   )
@@ -555,7 +566,16 @@ function App() {
   const levelProgress = Math.round((completedCount / lessons.length) * 100)
   const currentUnit = unitById.get(selectedLesson.unitId) ?? units[0]
 
-  const quizPhrase = selectedLesson.phrases[lessonStep] ?? selectedLesson.phrases[0]
+  const sessionPhrases = useMemo<Phrase[]>(() => {
+    const phraseById = new Map(allPhrases.map((p) => [p.id, p as Phrase]))
+    const reviewed = (selectedLesson.reviewPhraseIds ?? [])
+      .map((id) => phraseById.get(id))
+      .filter((p): p is Phrase => p != null)
+    return [...reviewed, ...selectedLesson.phrases]
+  }, [selectedLesson])
+  const reviewPhraseCount = selectedLesson.reviewPhraseIds?.length ?? 0
+
+  const quizPhrase = sessionPhrases[lessonStep] ?? sessionPhrases[0]
   const options = useMemo(() => {
     const distractors = quizOptions
       .concat(allAnswerOptions)
@@ -622,7 +642,9 @@ function App() {
           [lesson.id]: {
             completedAt: previousReview?.completedAt ?? completedAt,
             lastReviewedAt: completedAt,
-            nextReviewAt: completedAt + LESSON_REVIEW_COOLDOWN_MS,
+            nextReviewAt: completedAt + lessonReviewIntervalMs(
+              alreadyCompleted ? (previousReview?.reviewCount ?? 0) : 0
+            ),
             reviewCount: alreadyCompleted ? (previousReview?.reviewCount ?? 0) + 1 : (previousReview?.reviewCount ?? 0),
           },
         },
@@ -672,7 +694,7 @@ function App() {
     if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
     setIsAutoAdvancing(false)
 
-    if (lessonStep < selectedLesson.phrases.length - 1) {
+    if (lessonStep < sessionPhrases.length - 1) {
       setLessonStep((current) => current + 1)
       setQuizChoice('')
       setQuizLocked(false)
@@ -733,7 +755,7 @@ function App() {
     }
 
     speak(quizPhrase.hanzi)
-    if (isLessonRewardStep(lessonStep, selectedLesson.phrases.length)) {
+    if (isLessonRewardStep(lessonStep, sessionPhrases.length)) {
       setIsAutoAdvancing(false)
       if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current)
       return
@@ -752,9 +774,10 @@ function App() {
 
     setProgress((current) => {
       const dailyGoals = normalizeDailyGoals(current.dailyGoals, today)
+      const reviewedAt = Date.now()
       const existing = current.cards[activeCard.id] ?? {
         box: 0,
-        dueAt: Date.now(),
+        dueAt: reviewedAt,
         reviewed: 0,
         correct: 0,
       }
@@ -775,9 +798,11 @@ function App() {
           ...current.cards,
           [activeCard.id]: {
             box: nextBox,
-            dueAt: nextDueDate(difficulty, existing.box),
+            dueAt: nextDueDate(difficulty, nextBox),
             reviewed: existing.reviewed + 1,
             correct: existing.correct + (difficulty === 'hard' ? 0 : 1),
+            lapses: (existing.lapses ?? 0) + (difficulty === 'hard' ? 1 : 0),
+            lastReviewedAt: reviewedAt,
           },
         },
       }
@@ -885,7 +910,7 @@ function App() {
           lessonReviews[lesson.id] = {
             completedAt: previousReview?.completedAt ?? completedAt,
             lastReviewedAt: completedAt,
-            nextReviewAt: completedAt + LESSON_REVIEW_COOLDOWN_MS,
+            nextReviewAt: completedAt + lessonReviewIntervalMs(previousReview?.reviewCount ?? 0),
             reviewCount: previousReview?.reviewCount ?? 0,
           }
           bonusXp += lesson.xp
@@ -1364,7 +1389,9 @@ function App() {
             selectedLessonId={selectedLessonId}
             phrase={quizPhrase}
             stepIndex={lessonStep}
-            stepTotal={selectedLesson.phrases.length}
+            stepTotal={sessionPhrases.length}
+            reviewPhraseCount={reviewPhraseCount}
+            sessionPhrases={sessionPhrases}
             quizChoice={quizChoice}
             quizLocked={quizLocked}
             isAutoAdvancing={isAutoAdvancing}
@@ -1452,31 +1479,11 @@ function App() {
           <MascotWidget
             mascot={progress.mascot}
             blockedByMistakes={unresolvedMistakes.length}
-            userLevel={userLevel}
-            coins={progress.coins}
-            switchCost={MASCOT_SWITCH_COST}
             onRename={(name) =>
               setProgress((current) => ({
                 ...current,
                 mascot: { ...current.mascot, name },
               }))
-            }
-            onSwitchPath={() =>
-              setProgress((current) => {
-                if (progressLevel(current.xp) < 10 || current.coins < MASCOT_SWITCH_COST) return current
-                const nextPath = current.mascot.evolutionPath === 'dragon' ? 'peng' : 'dragon'
-                return {
-                  ...current,
-                  coins: current.coins - MASCOT_SWITCH_COST,
-                  mascot: {
-                    ...current.mascot,
-                    evolutionPath: nextPath,
-                    accessories: getStageAccessories(current.mascot.stage, nextPath),
-                    animation: 'evolve',
-                    mood: 'excited',
-                  },
-                }
-              })
             }
           />
         )}
@@ -1913,6 +1920,8 @@ function LearnView({
   phrase,
   stepIndex,
   stepTotal,
+  reviewPhraseCount,
+  sessionPhrases,
   quizChoice,
   quizLocked,
   isAutoAdvancing,
@@ -1932,6 +1941,8 @@ function LearnView({
   phrase: Phrase
   stepIndex: number
   stepTotal: number
+  reviewPhraseCount: number
+  sessionPhrases: Phrase[]
   quizChoice: string
   quizLocked: boolean
   isAutoAdvancing: boolean
@@ -1952,6 +1963,9 @@ function LearnView({
   const currentTabLabel = `${activeUnit.level} / ${stepIndex + 1} de ${stepTotal}`
   const showReward = quizLocked && isLessonRewardStep(stepIndex, stepTotal)
   const rewardKind = stepIndex + 1 === stepTotal ? 'complete' : 'checkpoint'
+  const isReviewStep = stepIndex < reviewPhraseCount
+  const newPhraseIndex = Math.max(1, stepIndex - reviewPhraseCount + 1)
+  const stepKindLabel = isReviewStep ? 'Revisao Anki' : `Input novo ${newPhraseIndex}/${selectedLesson.phrases.length}`
   const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
   const activeLessonRef = useRef<HTMLButtonElement | null>(null)
   const selectedAccess = lessonAccess(selectedLesson.id, progress, currentTime)
@@ -1989,13 +2003,26 @@ function LearnView({
           </div>
 
           <div className="lesson-progress">
-            {selectedLesson.phrases.map((item, index) => (
+            {sessionPhrases.map((item, index) => (
               <span
-                className={index <= stepIndex ? 'active' : ''}
-                key={item.id}
+                className={[
+                  index <= stepIndex ? 'active' : '',
+                  index < reviewPhraseCount ? 'review' : 'new',
+                ].filter(Boolean).join(' ')}
+                key={`${item.id}-${index}`}
                 aria-label={`Etapa ${index + 1} de ${stepTotal}`}
               ></span>
             ))}
+          </div>
+
+          <div className={isReviewStep ? 'lesson-method-card review' : 'lesson-method-card'}>
+            <span>{stepKindLabel}</span>
+            <strong>{isReviewStep ? 'Reativa o que voce ja viu antes.' : 'Krashen i+1: novo, mas apoiado no conhecido.'}</strong>
+            <small>
+              {isReviewStep
+                ? 'Essa frase antiga voltou aqui para fixar memoria antes da materia nova.'
+                : 'Primeiro entenda pelo contexto; depois responda sem depender da traducao literal.'}
+            </small>
           </div>
 
           <div className="phrase-stage">
@@ -2095,6 +2122,7 @@ function LearnView({
               <span>{activeUnit.title}</span>
               <span>{selectedLesson.minutes} min</span>
               <span>{selectedLesson.xp} XP</span>
+              {reviewPhraseCount > 0 && <span>{reviewPhraseCount} Anki antigo{reviewPhraseCount === 1 ? '' : 's'}</span>}
             </div>
           </div>
         </div>
@@ -2157,6 +2185,9 @@ function LearnView({
                       <span className="c-node-copy">
                         <strong>{lesson.title}</strong>
                         <small>{access.label}</small>
+                        {(lesson.reviewPhraseIds?.length ?? 0) > 0 && (
+                          <em>{lesson.reviewPhraseIds?.length} revisoes Anki</em>
+                        )}
                       </span>
                     </button>
                   )
@@ -2353,27 +2384,57 @@ function CardsView({
   onReview: (difficulty: Difficulty) => void
   onSpeak: (text: string) => void
 }) {
+  const viewNow = Date.now()
   const reviewed = useMemo(() => Object.values(progress.cards).reduce((total, card) => total + card.reviewed, 0), [progress.cards])
   const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
   const unlockedCount = useMemo(
     () => allPhrases.filter((phrase) => completedLessonSet.has(phrase.lessonId)).length,
     [completedLessonSet],
   )
+  const srsStats = useMemo(() => {
+    let newCount = 0
+    let learningCount = 0
+    let matureCount = 0
+    for (const phrase of allPhrases) {
+      if (!completedLessonSet.has(phrase.lessonId)) continue
+      const card = progress.cards[phrase.id]
+      if (!card) {
+        newCount += 1
+      } else if (card.box >= 5) {
+        matureCount += 1
+      } else {
+        learningCount += 1
+      }
+    }
+    return { newCount, learningCount, matureCount }
+  }, [completedLessonSet, progress.cards])
+  const activeCardProgress = activeCard ? progress.cards[activeCard.id] : undefined
+  const activeBox = activeCardProgress?.box ?? 0
+  const hardBox = Math.max(0, activeBox - 1)
+  const goodBox = activeBox + 1
+  const easyBox = activeBox + 2
   const deckItems = useMemo(
     () => allPhrases.map((phrase) => {
       const card = progress.cards[phrase.id]
       const unlocked = completedLessonSet.has(phrase.lessonId)
+      const dueLabel = !unlocked
+        ? 'Bloqueado'
+        : !card
+        ? 'Novo Anki'
+        : card.dueAt <= viewNow
+        ? `Caixa ${card.box} · venceu`
+        : `Caixa ${card.box} · em ${formatSrsDelay(card.dueAt - viewNow)}`
       return (
         <article className={unlocked ? 'deck-item' : 'deck-item locked'} key={phrase.id}>
           <div>
             <strong>{phrase.hanzi}</strong>
             <span>{phrase.lessonTitle}</span>
           </div>
-          <small>{unlocked ? (card ? `Caixa ${card.box}` : 'Novo') : 'Bloqueado'}</small>
+          <small>{dueLabel}</small>
         </article>
       )
     }),
-    [completedLessonSet, progress.cards],
+    [completedLessonSet, progress.cards, viewNow],
   )
 
   return (
@@ -2383,6 +2444,9 @@ function CardsView({
           <div>
             <p className="eyebrow">Fila de hoje</p>
             <h2>{dueCount} cartoes prontos</h2>
+            <span className="review-subtitle">
+              Anki SRS: {srsStats.newCount} novos · {srsStats.learningCount} em aprendizado · {srsStats.matureCount} maduros
+            </span>
           </div>
           <button
             className="icon-action"
@@ -2408,6 +2472,11 @@ function CardsView({
               literal={activeCard.literal}
               literalNote={activeCard.note}
             />
+            <div className="srs-card-meta" aria-label="Estado SRS do cartao">
+              <span>Caixa {activeBox}</span>
+              <span>{activeCardProgress ? `${activeCardProgress.reviewed} revisoes` : 'Primeiro encontro'}</span>
+              <span>{activeCardProgress?.lapses ? `${activeCardProgress.lapses} lapsos` : 'sem lapsos'}</span>
+            </div>
             <ConnectionChips items={phraseConnectionMap[activeCard.id]} />
           </>
         ) : (
@@ -2421,15 +2490,18 @@ function CardsView({
         <div className="review-actions">
           <button type="button" disabled={!activeCard} onClick={() => onReview('hard')}>
             <RotateCcw size={18} />
-            Dificil
+            <span>Dificil</span>
+            <small>{formatSrsDelay(srsDelayMs('hard', hardBox))}</small>
           </button>
           <button type="button" disabled={!activeCard} onClick={() => onReview('good')}>
             <CheckCircle2 size={18} />
-            Bom
+            <span>Bom</span>
+            <small>{formatSrsDelay(srsDelayMs('good', goodBox))}</small>
           </button>
           <button type="button" disabled={!activeCard} onClick={() => onReview('easy')}>
             <Sparkles size={18} />
-            Facil
+            <span>Facil</span>
+            <small>{formatSrsDelay(srsDelayMs('easy', easyBox))}</small>
           </button>
         </div>
       </section>

@@ -5352,6 +5352,108 @@ body,
   width: 100%;
 }
 
+.lesson-method-card {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(212, 160, 74, 0.30);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(212, 160, 74, 0.13), rgba(245, 234, 214, 0.05));
+}
+
+.lesson-method-card.review {
+  border-color: rgba(90, 139, 106, 0.42);
+  background: linear-gradient(135deg, rgba(90, 139, 106, 0.18), rgba(245, 234, 214, 0.05));
+}
+
+.lesson-method-card span {
+  color: var(--c-gold);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lesson-method-card strong {
+  color: var(--c-ink);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.lesson-method-card small {
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.lesson-progress span.review.active {
+  background: var(--c-jade);
+}
+
+.lesson-progress span.new.active {
+  background: var(--c-gold);
+}
+
+.c-node-copy em {
+  color: var(--c-jade);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.review-subtitle {
+  display: block;
+  margin-top: 4px;
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.srs-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.srs-card-meta span {
+  padding: 6px 9px;
+  border: 1px solid rgba(245, 234, 214, 0.12);
+  border-radius: 999px;
+  background: rgba(245, 234, 214, 0.06);
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.review-actions button small {
+  color: var(--c-gold);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.mascot-variant-card {
+  padding: 12px;
+  border: 1px solid rgba(212, 160, 74, 0.28);
+  border-radius: 10px;
+  background: rgba(245, 234, 214, 0.07);
+  display: grid;
+  gap: 4px;
+}
+
+.mascot-variant-card strong {
+  color: var(--c-ink);
+  font-family: var(--c-serif);
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.mascot-variant-card small {
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .mistake-choice-area {
   display: grid;
   gap: 10px;

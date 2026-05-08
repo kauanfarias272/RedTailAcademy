@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { type MascotState, defaultMascotState } from './mascot'
+import { type MascotState, defaultMascotState, normalizeMascotState } from './mascot'
 
 export type CardProgress = {
   box: number
   dueAt: number
   reviewed: number
   correct: number
+  lapses?: number
+  lastReviewedAt?: number
 }
 
 export type MistakeType = 'lesson' | 'card' | 'writing' | 'speech' | 'chunk'
@@ -122,7 +124,7 @@ export function useStoredProgress() {
           mistakes: Array.isArray(parsed.mistakes) ? parsed.mistakes : [],
           spokenPhrases: Array.isArray(parsed.spokenPhrases) ? parsed.spokenPhrases : [],
           lessonReviews: parsed.lessonReviews && typeof parsed.lessonReviews === 'object' ? parsed.lessonReviews : {},
-          mascot: { ...defaultMascotState, ...(parsed.mascot ?? {}) },
+          mascot: normalizeMascotState({ ...defaultMascotState, ...(parsed.mascot ?? {}) }),
           dailyGoals: normalizeDailyGoals(parsed.dailyGoals, parsed.dailyGoals?.date ?? ''),
           personalGoal: normalizePersonalGoal(parsed.personalGoal),
           clanId: typeof parsed.clanId === 'string' ? parsed.clanId : null,
@@ -266,10 +268,26 @@ export function resolveMistake(
 }
 
 export function nextDueDate(difficulty: 'hard' | 'good' | 'easy', box: number) {
+  return Date.now() + srsDelayMs(difficulty, box)
+}
+
+export function srsDelayMs(difficulty: 'hard' | 'good' | 'easy', box: number) {
   const hour = 60 * 60 * 1000
   const day = 24 * hour
+  const minute = 60 * 1000
+  const safeBox = Math.max(0, Math.min(8, box))
+  const intervals = [20 * minute, 1 * day, 3 * day, 7 * day, 14 * day, 30 * day, 60 * day, 120 * day, 180 * day]
 
-  if (difficulty === 'hard') return Date.now() + 3 * hour
-  if (difficulty === 'good') return Date.now() + Math.max(1, box + 1) * day
-  return Date.now() + Math.max(3, (box + 2) * 2) * day
+  if (difficulty === 'hard') return safeBox <= 1 ? 20 * minute : 1 * day
+  if (difficulty === 'good') return intervals[safeBox] ?? 180 * day
+  return intervals[Math.min(safeBox + 1, intervals.length - 1)] ?? 180 * day
+}
+
+export function formatSrsDelay(ms: number) {
+  const minute = 60 * 1000
+  const hour = 60 * minute
+  const day = 24 * hour
+  if (ms < hour) return `${Math.max(1, Math.round(ms / minute))} min`
+  if (ms < day) return `${Math.max(1, Math.round(ms / hour))}h`
+  return `${Math.max(1, Math.round(ms / day))}d`
 }
