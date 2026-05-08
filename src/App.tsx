@@ -1562,6 +1562,12 @@ function App() {
                 }
               })
             }
+            onSwitchVariant={(variantId) =>
+              setProgress((current) => ({
+                ...current,
+                mascot: { ...current.mascot, pengVariantId: variantId },
+              }))
+            }
           />
         )}
         {activeTab === 'profile' && (

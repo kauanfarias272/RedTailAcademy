@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
+  PENG_VARIANTS,
   type EvolutionStage,
   type MascotState,
   type MascotVariant,
+  type PengVariantId,
   getMascotDialogue,
   getMascotVariant,
   getStageInfo,
@@ -17,6 +19,7 @@ export function MascotWidget({
   mascot,
   onRename,
   onSwitchPath,
+  onSwitchVariant,
   blockedByMistakes = 0,
   userLevel = 1,
   coins = 0,
@@ -26,6 +29,7 @@ export function MascotWidget({
   mascot: MascotState
   onRename?: (name: string) => void
   onSwitchPath?: () => void
+  onSwitchVariant?: (variantId: PengVariantId) => void
   blockedByMistakes?: number
   userLevel?: number
   coins?: number
@@ -38,7 +42,6 @@ export function MascotWidget({
   const [nameInput, setNameInput] = useState(safeMascot.name)
 
   const info = getStageInfo(safeMascot.stage, safeMascot.evolutionPath)
-  const variant = getMascotVariant(safeMascot)
   const maxStage = maxStageForPath(safeMascot.evolutionPath)
   const progress = stageProgress(safeMascot.evoXp, safeMascot.stage, safeMascot.evolutionPath)
   const toNext = xpToNextStage(safeMascot.evoXp, safeMascot.stage, safeMascot.evolutionPath)
@@ -88,117 +91,147 @@ export function MascotWidget({
   }
 
   return (
-    <section className="mascot-widget">
-      <div className="mascot-header">
-        <div>
-          <p className="eyebrow">Companheiro de estudos</p>
-          {isNaming ? (
-            <div className="mascot-name-edit">
-              <input
-                value={nameInput}
-                onChange={(event) => setNameInput(event.target.value)}
-                onKeyDown={(event) => event.key === 'Enter' && handleRename()}
-                maxLength={20}
-                placeholder="Nome do seu koi..."
-                autoFocus
-              />
-              <button type="button" onClick={handleRename}>OK</button>
-            </div>
-          ) : (
-            <h2 onClick={() => onRename && setIsNaming(true)} title="Clique para renomear">
-              {safeMascot.name} <span className="mascot-stage-badge">{info.emoji} Nv.{safeMascot.stage}</span>
-            </h2>
-          )}
+    <section className="koi-widget">
+      <div className="koi-widget-top">
+        <div className="koi-widget-title-row">
+          <div className="koi-widget-title-copy">
+            <p className="eyebrow">5 Peixes Chineses · A Jornada de Peng</p>
+            {isNaming ? (
+              <div className="mascot-name-edit">
+                <input
+                  value={nameInput}
+                  onChange={(event) => setNameInput(event.target.value)}
+                  onKeyDown={(event) => event.key === 'Enter' && handleRename()}
+                  maxLength={20}
+                  placeholder="Nome do seu koi..."
+                  autoFocus
+                />
+                <button type="button" onClick={handleRename}>OK</button>
+              </div>
+            ) : (
+              <h2 onClick={() => onRename && setIsNaming(true)} title="Clique para renomear">
+                {safeMascot.name}
+                <span className="mascot-stage-badge">{info.emoji} Nv.{safeMascot.stage}</span>
+              </h2>
+            )}
+            <p className="koi-widget-subtitle">Do fundo do rio ao ceu — {info.name}</p>
+          </div>
+          <button
+            className="koi-sprite-thumb"
+            type="button"
+            aria-label="Ver dialogo do mascote"
+            onClick={() => { setShowDialogue(true); setTimeout(() => setShowDialogue(false), 4000) }}
+          >
+            <MascotSprite mascot={safeMascot} className={`mascot-sprite-compact mascot-${safeMascot.animation}`} />
+          </button>
         </div>
-        <div className="mascot-stage-label">{info.name}</div>
-      </div>
-
-      <div className="mascot-stage-area">
-        <MascotSprite mascot={safeMascot} className={`mascot-sprite mascot-${safeMascot.animation}`} />
-
         {showDialogue && (
           <div className={`mascot-bubble mascot-bubble-${safeMascot.mood}`}>
             <p>{dialogue}</p>
           </div>
         )}
-
         <div className="mascot-particles" aria-hidden="true">
           {safeMascot.animation === 'celebrate' && <CelebrateParticles />}
           {safeMascot.animation === 'evolve' && <EvolveParticles />}
         </div>
       </div>
 
-      <div className="mascot-info-grid">
-        <div className="mascot-variant-card">
-          <span className="eyebrow">{safeMascot.evolutionPath === 'peng' ? 'Rota Peng' : 'Rota Dragao'}</span>
-          <strong>{variant.hanzi} · {variant.name}</strong>
-          <small>{variant.trait}</small>
+      <div className="koi-stat-grid">
+        <div className="koi-stat-card">
+          <span className="koi-stat-icon">📖</span>
+          <div><span className="koi-stat-label">Licoes</span><strong>{safeMascot.lessonsCompleted}</strong></div>
         </div>
-
-        {blockedByMistakes > 0 && (
-          <div className="mascot-lock">
-            <strong>Evolucao bloqueada</strong>
-            <span>Corrija {blockedByMistakes} erro{blockedByMistakes === 1 ? '' : 's'} para o mascote voltar a evoluir.</span>
-          </div>
-        )}
-
-        <div className="mascot-evo-progress">
-          <div className="mascot-evo-labels">
-            <span>{info.title}</span>
-            {safeMascot.stage < maxStage && <span>{toNext} XP para evoluir</span>}
-            {safeMascot.stage >= maxStage && <span>{finalStageLabel}</span>}
-          </div>
-          <div className="mascot-evo-bar">
-            <span
-              className="mascot-evo-fill"
-              style={{ width: `${progress}%`, '--stage-color': info.color } as CSSProperties}
-            ></span>
-          </div>
+        <div className="koi-stat-card">
+          <span className="koi-stat-icon">⚡</span>
+          <div><span className="koi-stat-label">Evo XP</span><strong>{safeMascot.evoXp}</strong></div>
         </div>
-
-        <div className="mascot-stats-row">
-          <div className="mascot-stat">
-            <span>Licoes</span>
-            <strong>{safeMascot.lessonsCompleted}</strong>
-          </div>
-          <div className="mascot-stat">
-            <span>Evo XP</span>
-            <strong>{safeMascot.evoXp}</strong>
-          </div>
-          <div className="mascot-stat">
-            <span>Inatividade</span>
-            <strong>{safeMascot.inactiveDays}d</strong>
-          </div>
+        <div className="koi-stat-card">
+          <span className="koi-stat-icon">⏰</span>
+          <div><span className="koi-stat-label">Inatividade</span><strong>{safeMascot.inactiveDays}d</strong></div>
         </div>
-
-        {safeMascot.accessories.length > 0 && (
-          <div className="mascot-accessories">
-            <span className="eyebrow">Evolucoes visuais</span>
-            <div className="mascot-acc-chips">
-              {safeMascot.accessories.map((acc) => (
-                <span key={acc} className="mascot-acc-chip">
-                  {accessoryLabel(acc)}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {onSwitchPath && (
-          <div className="mascot-switch">
-            <div>
-              <span className="eyebrow">Destino alternativo</span>
-              <strong>{nextPathLabel}</strong>
-              <small>Nivel 10 e {switchCost} moedas para trocar.</small>
-            </div>
-            <button type="button" disabled={!canSwitchPath} onClick={onSwitchPath}>
-              Trocar
-            </button>
-          </div>
-        )}
+        <div className={`koi-stat-card${blockedByMistakes > 0 ? ' warn' : ''}`}>
+          <span className="koi-stat-icon">⚠</span>
+          <div><span className="koi-stat-label">Erros</span><strong>{blockedByMistakes}</strong></div>
+        </div>
       </div>
 
+      {blockedByMistakes > 0 && (
+        <div className="koi-evo-lock">
+          <div className="koi-evo-lock-icon">🔒</div>
+          <div>
+            <strong>Evolucao bloqueada</strong>
+            <span>Corrija {blockedByMistakes} erro{blockedByMistakes === 1 ? '' : 's'} para o mascote voltar a evoluir</span>
+          </div>
+        </div>
+      )}
+
+      <div className="koi-progress-panel">
+        <div className="koi-progress-head">
+          <span className="koi-progress-glyph" style={{ color: info.color }}>{info.emoji}</span>
+          <div className="koi-progress-info">
+            <span>{info.name}</span>
+            <small>{safeMascot.stage < maxStage ? `${toNext} XP para evoluir` : finalStageLabel}</small>
+          </div>
+          <span className="koi-progress-pct">{Math.round(progress)}%</span>
+        </div>
+        <div className="koi-progress-bar-wrap">
+          <div className="koi-progress-bar-fill" style={{ width: `${progress}%`, '--stage-color': info.color } as CSSProperties} />
+        </div>
+      </div>
+
+      <h3 className="koi-section-heading">Escolha seu companheiro</h3>
+      <div className="koi-fish-grid">
+        {PENG_VARIANTS.map((v) => {
+          const isActive = safeMascot.pengVariantId === v.id
+          return (
+            <button
+              key={v.id}
+              type="button"
+              className={`koi-fish-card${isActive ? ' active' : ''}`}
+              style={{ '--fish-color': v.color, '--fish-accent': v.accent } as CSSProperties}
+              onClick={() => onSwitchVariant?.(v.id as PengVariantId)}
+            >
+              <div className="koi-fish-card-badge">
+                <div className="koi-fish-card-icon">{v.hanzi}</div>
+                <div className="koi-fish-card-meta">
+                  <span className="koi-fish-card-name">{v.name}</span>
+                  <span className="koi-fish-card-trait">{v.trait}</span>
+                </div>
+                <span className="koi-fish-card-level">Nv.{safeMascot.stage}</span>
+              </div>
+              <div className="koi-fish-card-bar">
+                <div style={{ width: `${progress}%` }} />
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {safeMascot.accessories.length > 0 && (
+        <div className="mascot-accessories">
+          <span className="eyebrow">Evolucoes visuais</span>
+          <div className="mascot-acc-chips">
+            {safeMascot.accessories.map((acc) => (
+              <span key={acc} className="mascot-acc-chip">{accessoryLabel(acc)}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <p className="mascot-lore">{info.description}</p>
+
+      {onSwitchPath && (
+        <div className="koi-alt-path">
+          <div>
+            <span className="eyebrow">Destino Alternativo</span>
+            <strong>{nextPathLabel}</strong>
+            <small>Nivel 10 e {switchCost} moedas para trocar.</small>
+          </div>
+          <button type="button" disabled={!canSwitchPath} onClick={onSwitchPath}>
+            Trocar
+          </button>
+        </div>
+      )}
     </section>
   )
 }
