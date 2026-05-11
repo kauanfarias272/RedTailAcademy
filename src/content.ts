@@ -795,6 +795,58 @@ export const studyMoments: StudyMoment[] = [
   },
 ]
 
+export type BasicChar = {
+  id: string
+  hanzi: string
+  pinyin: string
+  meaning: string
+  hint: string
+  examples: string[]
+}
+
+export const basicChars: BasicChar[] = [
+  { id: 'wo', hanzi: '我', pinyin: 'wǒ', meaning: 'eu', hint: 'Pronome de primeira pessoa, base de quase toda frase pessoal.', examples: ['我好', '我是', '我有'] },
+  { id: 'ni', hanzi: '你', pinyin: 'nǐ', meaning: 'voce', hint: 'Pronome para falar com a outra pessoa.', examples: ['你好', '你是', '你们'] },
+  { id: 'hao', hanzi: '好', pinyin: 'hǎo', meaning: 'bom / bem', hint: 'Adjetivo basico; combina com quase tudo positivo.', examples: ['你好', '很好', '好吃'] },
+  { id: 'ma-q', hanzi: '吗', pinyin: 'ma', meaning: 'particula de pergunta', hint: 'No fim da frase transforma em pergunta sim/nao.', examples: ['你好吗', '是吗'] },
+  { id: 'shi', hanzi: '是', pinyin: 'shì', meaning: 'ser / e', hint: 'Verbo "ser" para identidade. Tom 4 (descendente).', examples: ['我是', '他是', '不是'] },
+  { id: 'bu', hanzi: '不', pinyin: 'bù', meaning: 'nao', hint: 'Negacao curta antes de verbo ou adjetivo.', examples: ['不是', '不好', '不要'] },
+  { id: 'mei', hanzi: '没', pinyin: 'méi', meaning: 'nao (com 有)', hint: 'Nega "ter" e acoes no passado. Par com 有.', examples: ['没有', '没事'] },
+  { id: 'you', hanzi: '有', pinyin: 'yǒu', meaning: 'ter / haver', hint: 'Posse e existencia. Negativo: 没有.', examples: ['我有', '有人', '没有'] },
+  { id: 'ta-he', hanzi: '他', pinyin: 'tā', meaning: 'ele', hint: 'Mesma pronuncia de 她 (ela), so muda o hanzi.', examples: ['他是', '他们'] },
+  { id: 'ta-she', hanzi: '她', pinyin: 'tā', meaning: 'ela', hint: 'Radical 女 (mulher) marca o feminino.', examples: ['她好', '她们'] },
+  { id: 'men', hanzi: '们', pinyin: 'men', meaning: 'plural (pessoas)', hint: 'Sufixo plural em pronomes humanos.', examples: ['我们', '你们', '他们'] },
+  { id: 'da', hanzi: '大', pinyin: 'dà', meaning: 'grande', hint: 'Pictograma de pessoa de bracos abertos.', examples: ['大学', '大家'] },
+  { id: 'xiao', hanzi: '小', pinyin: 'xiǎo', meaning: 'pequeno', hint: 'Oposto de 大. Aparece em nomes carinhosos.', examples: ['小猫', '小心'] },
+  { id: 'ren', hanzi: '人', pinyin: 'rén', meaning: 'pessoa', hint: 'Um dos primeiros radicais; duas pernas andando.', examples: ['中国人', '有人'] },
+  { id: 'zhong', hanzi: '中', pinyin: 'zhōng', meaning: 'meio / centro', hint: 'Linha cortando o centro. Vira "China" em 中国.', examples: ['中国', '中文'] },
+  { id: 'guo', hanzi: '国', pinyin: 'guó', meaning: 'pais', hint: 'Caixa com jade dentro: o "reino".', examples: ['中国', '美国', '法国'] },
+  { id: 'jia', hanzi: '家', pinyin: 'jiā', meaning: 'casa / familia', hint: 'Telhado com porco embaixo: lar.', examples: ['我家', '家人'] },
+  { id: 'ai', hanzi: '爱', pinyin: 'ài', meaning: 'amor / amar', hint: 'Coracao 心 escondido no meio do caractere.', examples: ['我爱你', '爱人'] },
+  { id: 'chi', hanzi: '吃', pinyin: 'chī', meaning: 'comer', hint: 'Radical 口 (boca) a esquerda; tudo que come tem boca.', examples: ['吃饭', '好吃'] },
+  { id: 'he-drink', hanzi: '喝', pinyin: 'hē', meaning: 'beber', hint: 'Tambem tem 口 (boca). Par com 吃.', examples: ['喝水', '喝茶'] },
+  { id: 'shui', hanzi: '水', pinyin: 'shuǐ', meaning: 'agua', hint: 'Pictograma de riacho. Radical de muitas palavras liquidas.', examples: ['喝水', '水果'] },
+  { id: 'cha', hanzi: '茶', pinyin: 'chá', meaning: 'cha', hint: 'Radical 艹 (grama) em cima; e uma folha.', examples: ['喝茶', '红茶'] },
+  { id: 'fan', hanzi: '饭', pinyin: 'fàn', meaning: 'arroz / refeicao', hint: 'Radical 饣 (comida) a esquerda.', examples: ['吃饭', '米饭'] },
+  { id: 'qian', hanzi: '钱', pinyin: 'qián', meaning: 'dinheiro', hint: 'Radical 钅 (metal): dinheiro era moeda de metal.', examples: ['多少钱', '没钱'] },
+  { id: 'duo', hanzi: '多', pinyin: 'duō', meaning: 'muito / quanto', hint: 'Dois 夕 (noite) empilhados: muitos dias.', examples: ['多少', '很多'] },
+  { id: 'shao', hanzi: '少', pinyin: 'shǎo', meaning: 'pouco', hint: 'Par com 多. Tambem aparece em 多少 (quanto).', examples: ['多少', '很少'] },
+  { id: 'tian', hanzi: '天', pinyin: 'tiān', meaning: 'dia / ceu', hint: 'Pessoa 大 com uma linha em cima: ceu.', examples: ['今天', '明天', '天气'] },
+  { id: 'jin', hanzi: '今', pinyin: 'jīn', meaning: 'agora / este', hint: 'Marca tempo presente. Combina com 天 = hoje.', examples: ['今天', '今年'] },
+  { id: 'ming', hanzi: '明', pinyin: 'míng', meaning: 'claro / proximo', hint: 'Sol 日 + lua 月: brilho. Tambem "amanha".', examples: ['明天', '明白'] },
+  { id: 'da-big-yi', hanzi: '一', pinyin: 'yī', meaning: 'um / 1', hint: 'Uma linha so. O numero mais simples.', examples: ['一个', '第一', '一起'] },
+  { id: 'er', hanzi: '二', pinyin: 'èr', meaning: 'dois / 2', hint: 'Duas linhas paralelas.', examples: ['二十', '第二'] },
+  { id: 'san', hanzi: '三', pinyin: 'sān', meaning: 'tres / 3', hint: 'Tres linhas paralelas.', examples: ['三十', '三个'] },
+  { id: 'shi-ten', hanzi: '十', pinyin: 'shí', meaning: 'dez / 10', hint: 'Cruz; nao confundir com 是 (ser, tom 4).', examples: ['十个', '十一'] },
+  { id: 'kan', hanzi: '看', pinyin: 'kàn', meaning: 'ver / olhar', hint: 'Mao 手 sobre olho 目: proteger o olhar para enxergar.', examples: ['看书', '看见'] },
+  { id: 'shuo', hanzi: '说', pinyin: 'shuō', meaning: 'falar / dizer', hint: 'Radical 讠 (palavra) a esquerda.', examples: ['说话', '请说'] },
+  { id: 'qu', hanzi: '去', pinyin: 'qù', meaning: 'ir', hint: 'Movimento para fora; combina com qualquer lugar.', examples: ['我去', '去年'] },
+  { id: 'lai', hanzi: '来', pinyin: 'lái', meaning: 'vir', hint: 'Par com 去. Apareceu na expressao 起来 (levante).', examples: ['过来', '起来'] },
+  { id: 'xie-thank', hanzi: '谢', pinyin: 'xiè', meaning: 'agradecer', hint: 'Radical 讠 (palavra); agradecer e falar.', examples: ['谢谢', '感谢'] },
+  { id: 'qing', hanzi: '请', pinyin: 'qǐng', meaning: 'por favor / pedir', hint: 'Radical 讠 (palavra) + 青 (azul puro).', examples: ['请坐', '请问'] },
+  { id: 'zai', hanzi: '在', pinyin: 'zài', meaning: 'estar em / em', hint: 'Marca localizacao. Pronuncia parecida com 再 (de novo).', examples: ['在家', '现在'] },
+]
+
 export const allPhrases = lessons.flatMap((lesson) =>
   lesson.phrases.map((phrase) => ({
     ...phrase,

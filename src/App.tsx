@@ -41,6 +41,7 @@ import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react'
 import './App.css'
 import {
   allPhrases,
+  basicChars,
   chunks,
   clipSeeds,
   lessons,
@@ -91,7 +92,7 @@ import {
 } from './clans'
 
 type Tab = 'learn' | 'practice' | 'errors' | 'clan' | 'clips' | 'mascot' | 'profile'
-type PracticeMode = 'cards' | 'chunks' | 'speak' | 'write'
+type PracticeMode = 'basics' | 'cards' | 'chunks' | 'speak' | 'write'
 type Difficulty = 'hard' | 'good' | 'easy'
 type MicState = 'idle' | 'starting' | 'listening' | 'processing' | 'success' | 'fail' | 'error'
 type CultureFilter = 'all' | 'meme' | 'music' | 'history' | 'pronunciation'
@@ -245,6 +246,7 @@ function buildLessonSession(lesson: Lesson): { phrases: Phrase[]; reviewCount: n
 }
 
 const practiceModes: Array<{ id: PracticeMode; label: string; icon: typeof Layers3 }> = [
+  { id: 'basics', label: 'Basico', icon: BookOpen },
   { id: 'cards', label: 'Cartoes', icon: Layers3 },
   { id: 'chunks', label: 'Chunks', icon: Boxes },
   { id: 'speak', label: 'Fala', icon: Mic },
@@ -2043,8 +2045,10 @@ function RevealStudyTabs({
             type="button"
             onClick={() => toggle('pronunciation')}
             aria-expanded={active === 'pronunciation'}
+            aria-label={active === 'pronunciation' ? 'Ocultar pronuncia' : 'Mostrar pronuncia'}
           >
-            {active === 'pronunciation' ? 'Ocultar pronuncia' : 'Mostrar pronuncia'}
+            <span className="reveal-tab-dot" aria-hidden="true" />
+            Pronuncia
           </button>
         )}
         {hasLiteral && (
@@ -2053,8 +2057,10 @@ function RevealStudyTabs({
             type="button"
             onClick={() => toggle('literal')}
             aria-expanded={active === 'literal'}
+            aria-label={active === 'literal' ? 'Ocultar literal' : 'Mostrar literal'}
           >
-            {active === 'literal' ? 'Ocultar literal' : 'Mostrar literal'}
+            <span className="reveal-tab-dot" aria-hidden="true" />
+            Literal
           </button>
         )}
       </div>
@@ -2521,6 +2527,10 @@ function PracticeView({
           )
         })}
       </section>
+
+      {mode === 'basics' && (
+        <BasicsView onSpeak={onSpeak} />
+      )}
 
       {mode === 'cards' && (
         <CardsView
@@ -3026,6 +3036,148 @@ function ErrorsView({
           )
         })}
       </section>
+    </div>
+  )
+}
+
+function BasicsView({ onSpeak }: { onSpeak: (text: string) => void }) {
+  const [index, setIndex] = useState(0)
+  const [picked, setPicked] = useState<string | null>(null)
+  const [streak, setStreak] = useState(0)
+
+  const char = basicChars[index % basicChars.length]
+
+  const options = useMemo(() => {
+    const distractors = basicChars
+      .filter((other) => other.id !== char.id && other.meaning !== char.meaning)
+      .sort((left, right) => optionRank(`basic-${char.id}`, left.id) - optionRank(`basic-${char.id}`, right.id))
+      .slice(0, 3)
+      .map((other) => other.meaning)
+    return [char.meaning, ...distractors].sort(
+      (left, right) => optionRank(`basic-${char.id}-shuf`, left) - optionRank(`basic-${char.id}-shuf`, right),
+    )
+  }, [char])
+
+  const locked = picked !== null
+  const isCorrect = picked === char.meaning
+
+  function pick(option: string) {
+    if (locked) return
+    setPicked(option)
+    if (option === char.meaning) {
+      setStreak((value) => value + 1)
+    } else {
+      setStreak(0)
+    }
+  }
+
+  function next() {
+    setPicked(null)
+    setIndex((value) => (value + 1) % basicChars.length)
+  }
+
+  return (
+    <div className="basics-layout">
+      <section className="basics-stage">
+        <div className="review-header">
+          <div>
+            <p className="eyebrow">Basico hanzi por hanzi</p>
+            <h2>O que e cada caractere?</h2>
+          </div>
+          <div className="hud-pill">
+            <Sparkles size={16} />
+            <strong>{streak}</strong>
+            <span>seguidos</span>
+          </div>
+        </div>
+
+        <div className="basics-card">
+          <button
+            className="sound-button"
+            type="button"
+            onClick={() => onSpeak(char.hanzi)}
+            title="Ouvir caractere"
+          >
+            <Volume2 size={22} />
+          </button>
+          <div className="basics-hanzi" aria-label={`Caractere ${char.hanzi}`}>{char.hanzi}</div>
+          <p className="basics-pinyin">{char.pinyin}</p>
+          <p className="basics-prompt">Toque na traducao certa:</p>
+          <div className="basics-options">
+            {options.map((option) => {
+              const isThisCorrect = option === char.meaning
+              const isThisPicked = option === picked
+              const stateClass = locked
+                ? isThisCorrect
+                  ? 'basics-option correct'
+                  : isThisPicked
+                  ? 'basics-option wrong'
+                  : 'basics-option dim'
+                : 'basics-option'
+              return (
+                <button
+                  key={option}
+                  className={stateClass}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => pick(option)}
+                >
+                  {option}
+                </button>
+              )
+            })}
+          </div>
+
+          {locked && (
+            <div className={isCorrect ? 'basics-feedback good' : 'basics-feedback bad'}>
+              <strong>{char.hanzi} = {char.meaning}</strong>
+              <p>{char.hint}</p>
+              <div className="basics-examples">
+                {char.examples.map((example) => (
+                  <button
+                    key={example}
+                    type="button"
+                    className="basics-example"
+                    onClick={() => onSpeak(example)}
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+              <button className="primary-action" type="button" onClick={next}>
+                Proximo caractere <ChevronRight size={18} />
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <aside className="basics-side">
+        <div className="deck-header">
+          <p className="eyebrow">Caracteres soltos</p>
+          <h2>{index + 1}/{basicChars.length} hanzi</h2>
+          <span>Aprenda cada peca antes de montar frases inteiras.</span>
+        </div>
+        <div className="deck-list basics-deck">
+          {basicChars.map((item, itemIndex) => (
+            <button
+              key={item.id}
+              className={itemIndex === index ? 'deck-item active' : 'deck-item'}
+              type="button"
+              onClick={() => {
+                setIndex(itemIndex)
+                setPicked(null)
+              }}
+            >
+              <div>
+                <strong className="deck-hanzi">{item.hanzi}</strong>
+                <span>{item.pinyin}</span>
+              </div>
+              <small>{item.meaning}</small>
+            </button>
+          ))}
+        </div>
+      </aside>
     </div>
   )
 }
@@ -4265,6 +4417,140 @@ function ClipCard({
   )
 }
 
+function LearnedWordsPanel({ progress }: { progress: LearningProgress }) {
+  const phraseLookup = useMemo(() => new Map(allPhrases.map((phrase) => [phrase.id, phrase])), [])
+  const basicLookup = useMemo(() => new Map(basicChars.map((char) => [char.id, char])), [])
+  const completedLessonSet = useMemo(() => new Set(progress.completedLessons), [progress.completedLessons])
+
+  const entries = useMemo(() => {
+    const seen = new Map<
+      string,
+      { id: string; hanzi: string; pinyin: string; portuguese: string; box: number; reviewed: number; source: 'card' | 'lesson' | 'basic'; lastSeenAt: number }
+    >()
+
+    for (const [cardId, card] of Object.entries(progress.cards)) {
+      const phrase = phraseLookup.get(cardId)
+      if (!phrase) continue
+      seen.set(`phrase-${cardId}`, {
+        id: cardId,
+        hanzi: phrase.hanzi,
+        pinyin: phrase.pinyin,
+        portuguese: phrase.portuguese,
+        box: card.box ?? 0,
+        reviewed: card.reviewed ?? 0,
+        source: 'card',
+        lastSeenAt: card.lastReviewedAt ?? 0,
+      })
+    }
+
+    for (const phrase of allPhrases) {
+      if (!completedLessonSet.has(phrase.lessonId)) continue
+      const key = `phrase-${phrase.id}`
+      if (seen.has(key)) continue
+      seen.set(key, {
+        id: phrase.id,
+        hanzi: phrase.hanzi,
+        pinyin: phrase.pinyin,
+        portuguese: phrase.portuguese,
+        box: 0,
+        reviewed: 0,
+        source: 'lesson',
+        lastSeenAt: 0,
+      })
+    }
+
+    for (const mistake of progress.mistakes) {
+      if (mistake.type !== 'card' && mistake.type !== 'lesson' && mistake.type !== 'chunk') continue
+      const phrase = phraseLookup.get(mistake.itemId)
+      if (phrase) {
+        const key = `phrase-${phrase.id}`
+        if (!seen.has(key)) {
+          seen.set(key, {
+            id: phrase.id,
+            hanzi: phrase.hanzi,
+            pinyin: phrase.pinyin,
+            portuguese: phrase.portuguese,
+            box: 0,
+            reviewed: 0,
+            source: 'card',
+            lastSeenAt: mistake.lastSeenAt,
+          })
+        }
+        continue
+      }
+      const basic = basicLookup.get(mistake.itemId)
+      if (basic) {
+        const key = `basic-${basic.id}`
+        if (!seen.has(key)) {
+          seen.set(key, {
+            id: basic.id,
+            hanzi: basic.hanzi,
+            pinyin: basic.pinyin,
+            portuguese: basic.meaning,
+            box: 0,
+            reviewed: 0,
+            source: 'basic',
+            lastSeenAt: mistake.lastSeenAt,
+          })
+        }
+      }
+    }
+
+    return Array.from(seen.values()).sort((a, b) => {
+      if (b.box !== a.box) return b.box - a.box
+      return b.lastSeenAt - a.lastSeenAt
+    })
+  }, [progress.cards, progress.mistakes, completedLessonSet, phraseLookup, basicLookup])
+
+  const mastered = entries.filter((entry) => entry.box >= 3).length
+  const reviewing = entries.filter((entry) => entry.box > 0 && entry.box < 3).length
+
+  return (
+    <section className="learned-panel">
+      <div className="ranking-header">
+        <p className="eyebrow">Palavras aprendidas</p>
+        <h2>{entries.length} {entries.length === 1 ? 'item' : 'itens'} no seu repertorio</h2>
+      </div>
+      <div className="learned-summary">
+        <span>
+          <strong>{mastered}</strong> dominadas (caixa 3+)
+        </span>
+        <span>
+          <strong>{reviewing}</strong> em revisao
+        </span>
+      </div>
+      {entries.length === 0 ? (
+        <div className="learned-empty">
+          Faca uma licao ou revise cartoes para comecar a montar seu historico.
+        </div>
+      ) : (
+        <div className="learned-list">
+          {entries.map((entry) => (
+            <div key={`${entry.source}-${entry.id}`} className="learned-item">
+              <span className="learned-hanzi">{entry.hanzi}</span>
+              <div className="learned-body">
+                <span className="learned-pinyin">{entry.pinyin}</span>
+                <span className="learned-pt">{entry.portuguese}</span>
+              </div>
+              <span className="learned-box">
+                {entry.box >= 5
+                  ? 'Dominado'
+                  : entry.box >= 3
+                  ? `Caixa ${entry.box}`
+                  : entry.box > 0
+                  ? `Caixa ${entry.box}`
+                  : entry.source === 'lesson'
+                  ? 'Visto'
+                  : 'Novo'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function ProfileView({
   progress,
   totalMinutes,
@@ -4422,6 +4708,8 @@ function ProfileView({
           ))}
         </div>
       </section>
+
+      <LearnedWordsPanel progress={progress} />
 
       <section className="account-panel">
         <div className="ranking-header">
