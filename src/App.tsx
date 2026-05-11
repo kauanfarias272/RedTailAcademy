@@ -2036,16 +2036,38 @@ function RevealStudyTabs({
     setActive((current) => (current === next ? null : next))
   }
 
+  if (active) {
+    const label = active === 'pronunciation' ? 'Pronuncia' : 'Literal'
+    const value = active === 'pronunciation' ? pronunciation : literal
+    return (
+      <div className={compact ? 'reveal-study-tabs compact reveal-inline' : 'reveal-study-tabs reveal-inline'}>
+        <button
+          type="button"
+          className="reveal-inline-chip"
+          onClick={() => setActive(null)}
+          aria-label={`Ocultar ${label.toLowerCase()}`}
+        >
+          <span className="reveal-inline-label">{label}</span>
+          <span className="reveal-inline-value">{value}</span>
+          {active === 'literal' && literalNote ? (
+            <span className="reveal-inline-note">{literalNote}</span>
+          ) : null}
+          <span className="reveal-inline-close" aria-hidden="true">×</span>
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className={compact ? 'reveal-study-tabs compact' : 'reveal-study-tabs'}>
       <div className="reveal-tab-row" role="tablist" aria-label="Detalhes opcionais">
         {hasPronunciation && (
           <button
-            className={active === 'pronunciation' ? 'reveal-tab active' : 'reveal-tab'}
+            className="reveal-tab"
             type="button"
             onClick={() => toggle('pronunciation')}
-            aria-expanded={active === 'pronunciation'}
-            aria-label={active === 'pronunciation' ? 'Ocultar pronuncia' : 'Mostrar pronuncia'}
+            aria-expanded={false}
+            aria-label="Mostrar pronuncia"
           >
             <span className="reveal-tab-dot" aria-hidden="true" />
             Pronuncia
@@ -2053,24 +2075,17 @@ function RevealStudyTabs({
         )}
         {hasLiteral && (
           <button
-            className={active === 'literal' ? 'reveal-tab active' : 'reveal-tab'}
+            className="reveal-tab"
             type="button"
             onClick={() => toggle('literal')}
-            aria-expanded={active === 'literal'}
-            aria-label={active === 'literal' ? 'Ocultar literal' : 'Mostrar literal'}
+            aria-expanded={false}
+            aria-label="Mostrar literal"
           >
             <span className="reveal-tab-dot" aria-hidden="true" />
             Literal
           </button>
         )}
       </div>
-      {active && (
-        <div className="reveal-tab-panel" role="region">
-          <span>{active === 'pronunciation' ? 'Pronuncia' : 'Literal'}</span>
-          <strong>{active === 'pronunciation' ? pronunciation : literal}</strong>
-          {active === 'literal' && literalNote ? <small>{literalNote}</small> : null}
-        </div>
-      )}
     </div>
   )
 }

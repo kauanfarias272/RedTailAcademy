@@ -5929,8 +5929,6 @@ body.focus-mode .workspace {
 }
 
 .lesson-panel-live .reveal-tab-panel {
-  max-height: 82px;
-  overflow-y: auto;
   border-color: rgba(212, 160, 74, 0.24);
   background: rgba(14, 10, 8, 0.24);
   animation: c-soft-enter 180ms ease-out;
@@ -6027,10 +6025,6 @@ body.focus-mode .workspace {
 
   .lesson-panel-live .phrase-stage strong {
     font-size: clamp(30px, 11vw, 44px);
-  }
-
-  .lesson-panel-live .reveal-tab-panel {
-    max-height: 72px;
   }
 
   .lesson-insight {
@@ -7422,4 +7416,93 @@ body.focus-mode .workspace {
   color: rgba(245, 234, 214, 0.62);
   font-size: 12.5px;
   text-align: center;
+}
+
+/* === v0.2.21: inline reveal chip (replaces dropdown panel) === */
+
+.reveal-study-tabs.reveal-inline {
+  margin-top: 8px;
+}
+
+.reveal-inline-chip {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(212, 160, 74, 0.55);
+  border-radius: 12px;
+  background: rgba(212, 160, 74, 0.12);
+  color: var(--c-ink);
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--c-sans);
+  animation: c-soft-enter 160ms ease-out;
+}
+
+.reveal-inline-chip:active {
+  transform: scale(0.995);
+}
+
+.reveal-inline-label {
+  color: var(--c-gold);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(212, 160, 74, 0.20);
+  white-space: nowrap;
+}
+
+.reveal-inline-value {
+  color: #fff3d5;
+  font-family: var(--c-serif);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.reveal-inline-close {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(245, 234, 214, 0.10);
+  color: rgba(245, 234, 214, 0.72);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.reveal-inline-note {
+  grid-column: 1 / -1;
+  color: rgba(245, 234, 214, 0.72);
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-family: var(--c-sans);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+@media (max-width: 420px) {
+  .reveal-inline-value {
+    font-size: 14px;
+  }
+
+  .reveal-inline-label {
+    font-size: 8.5px;
+    padding: 3px 6px;
+  }
+
+  .reveal-inline-note {
+    font-size: 11px;
+  }
 }
