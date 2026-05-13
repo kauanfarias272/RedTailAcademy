@@ -2,40 +2,40 @@
   "project_info": {
     "project_number": "179204091097",
     "project_id": "redtailacademy-883be",
-    "storage_bucket": "redtailacademy-883be.firebasestorage.app"
+    "storage_bucket": "redtailacademy-883be.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:179204091097:android:1234567890abcdef",
+        "mobilesdk_app_id": "1:179204091097:android:13ac76e43118f81e5362c8",
         "android_client_info": {
           "package_name": "app.redtail.academy"
         }
       },
       "oauth_client": [
         {
-          "client_id": "179204091097-fakeclientid1234567890.apps.googleusercontent.com",
+          "client_id": "179204091097-4gt25mo7nv84bn9c3r0dbehdmr9d4rmo.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "179204091097-p659v197mbe1eovsq9535itf6at9qsc0.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "app.redtail.academy",
             "certificate_hash": "8dd2300740929d67c15537789aa01c5361a03502"
           }
-        },
-        {
-          "client_id": "179204091097-fakeclientidweb0987654321.apps.googleusercontent.com",
-          "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCofc89ipwr0ezS9zz0svAAeotEJDPr1AA"
+          "current_key": "AIzaSyCNwT_rssny16llglwbHJ-klCGy7MBr7AI"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "179204091097-fakeclientidweb0987654321.apps.googleusercontent.com",
+              "client_id": "179204091097-4gt25mo7nv84bn9c3r0dbehdmr9d4rmo.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

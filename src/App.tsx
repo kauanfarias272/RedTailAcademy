@@ -16,6 +16,7 @@ import {
   LockKeyhole,
   LogIn,
   LogOut,
+  Mail,
   Mic,
   Play,
   Plus,
@@ -28,13 +29,14 @@ import {
   Trash2,
   Trophy,
   Undo2,
+  UserRound,
   Users,
   Volume2,
 } from 'lucide-react'
 import { DirectionCHeader, DirectionCNavButton } from './components/DirectionC'
 import { Logo1, LogoVertical } from './components/Logos'
 import { Capacitor, registerPlugin } from '@capacitor/core'
-import { auth, deleteCurrentAccount, friendlyAuthError } from './firebase'
+import { auth, deleteCurrentAccount, friendlyAuthError, signInAnonymous } from './firebase'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, type User, GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react'
@@ -352,6 +354,8 @@ function App() {
   const [authError, setAuthError] = useState('')
   const [authInfo, setAuthInfo] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
+  const [authBusy, setAuthBusy] = useState(false)
+  const [authTab, setAuthTab] = useState<'email' | 'social'>('email')
   const [googleDisabled, setGoogleDisabled] = useState<boolean>(() => {
     try { return localStorage.getItem('redtail.googleConfigBroken') === '1' } catch { return false }
   })
@@ -1251,178 +1255,261 @@ function App() {
   }
 
   if (isAuthLoading) {
-    return <div className="app-shell" style={{ display: 'grid', placeItems: 'center' }}>Carregando...</div>
+    return (
+      <div className="app-shell auth-shell">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <LogoVertical dark={true} />
+          <div className="auth-spinner" />
+        </div>
+        <div className="auth-watermark">紅尾學院</div>
+      </div>
+    )
   }
 
   if (!effectiveUser) {
+    const googleSvg = (
+      <svg width="18" height="18" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+    )
+
+    async function handleEmailSubmit(e: FormEvent) {
+      e.preventDefault()
+      if (authBusy) return
+      setAuthError('')
+      setAuthInfo('')
+      const email = authEmail.trim()
+      const password = authPassword
+      if (!email) { setAuthError('Digite o e-mail.'); return }
+      if (!password) { setAuthError('Digite a senha.'); return }
+      if (password.length < 6) { setAuthError('Senha precisa ter pelo menos 6 caracteres.'); return }
+      setAuthBusy(true)
+      try {
+        if (isRegistering) {
+          await createUserWithEmailAndPassword(auth, email, password)
+        } else {
+          await signInWithEmailAndPassword(auth, email, password)
+        }
+      } catch (err: unknown) {
+        setAuthError(friendlyAuthError(err))
+      } finally {
+        setAuthBusy(false)
+      }
+    }
+
+    async function handleGoogleLogin() {
+      if (authBusy) return
+      setAuthError('')
+      setAuthInfo('')
+      setAuthBusy(true)
+      try {
+        if (Capacitor.isNativePlatform()) {
+          const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication')
+          const result = await FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true })
+          const idToken = result.credential?.idToken ?? null
+          const accessToken = result.credential?.accessToken ?? null
+          if (idToken || accessToken) {
+            const credential = GoogleAuthProvider.credential(idToken, accessToken)
+            await signInWithCredential(auth, credential)
+            return
+          }
+          setAuthError('Google nao retornou token. Tente outro metodo de login.')
+          return
+        }
+        const provider = new GoogleAuthProvider()
+        provider.addScope('email')
+        provider.addScope('profile')
+        await signInWithPopup(auth, provider)
+      } catch (err: unknown) {
+        const msg = Capacitor.isNativePlatform() ? googleNativeErrorMessage(err) : friendlyAuthError(err)
+        setAuthError(msg)
+        if (msg.includes('nao esta configurado')) {
+          try { localStorage.setItem('redtail.googleConfigBroken', '1') } catch { /* ignore */ }
+          setGoogleDisabled(true)
+        }
+      } finally {
+        setAuthBusy(false)
+      }
+    }
+
+    async function handleAnonymousLogin() {
+      if (authBusy) return
+      setAuthError('')
+      setAuthInfo('')
+      setAuthBusy(true)
+      try {
+        await signInAnonymous()
+      } catch (err: unknown) {
+        setAuthError(friendlyAuthError(err))
+      } finally {
+        setAuthBusy(false)
+      }
+    }
+
+    async function handleForgotPassword() {
+      setAuthError('')
+      setAuthInfo('')
+      const email = authEmail.trim()
+      if (!email) { setAuthError('Digite o e-mail antes de pedir o reset.'); return }
+      try {
+        await sendPasswordResetEmail(auth, email)
+        setAuthInfo('Enviamos um link de reset para ' + email + '. Confira a caixa de entrada (e spam).')
+      } catch (err) {
+        setAuthError(friendlyAuthError(err))
+      }
+    }
+
     return (
       <div className="app-shell auth-shell">
-        <form
-          className="lesson-panel auth-panel"
-          style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px' }}
-          onSubmit={async (e) => {
-            e.preventDefault()
-            setAuthError('')
-            const email = authEmail.trim()
-            const password = authPassword
-            if (!email) {
-              setAuthError('Digite o e-mail.')
-              return
-            }
-            if (!password) {
-              setAuthError('Digite a senha.')
-              return
-            }
-            if (password.length < 6) {
-              setAuthError('Senha precisa ter pelo menos 6 caracteres.')
-              return
-            }
-            try {
-              if (isRegistering) {
-                await createUserWithEmailAndPassword(auth, email, password)
-              } else {
-                await signInWithEmailAndPassword(auth, email, password)
-              }
-            } catch (err: unknown) {
-              setAuthError(friendlyAuthError(err))
-            }
-          }}
-        >
-          <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+        <div className="auth-panel">
+          {/* Logo area */}
+          <div className="auth-logo-area">
             <LogoVertical dark={true} />
-            <p style={{ margin: 0, color: '#796f66' }}>{isRegistering ? 'Crie sua conta' : 'Acesse sua conta'}</p>
           </div>
-          
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            E-mail
-            <input 
-              type="email" 
-              value={authEmail} 
-              onChange={e => setAuthEmail(e.target.value)} 
-              required 
-              style={{ padding: '12px', borderRadius: '8px', border: '1px solid rgba(80,65,54,0.14)', background: 'rgba(255,250,244,0.08)', color: '#f6f0e8' }}
-            />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            Senha
-            <input 
-              type="password" 
-              value={authPassword} 
-              onChange={e => setAuthPassword(e.target.value)} 
-              required 
-              minLength={6}
-              style={{ padding: '12px', borderRadius: '8px', border: '1px solid rgba(80,65,54,0.14)', background: 'rgba(255,250,244,0.08)', color: '#f6f0e8' }}
-            />
-          </label>
-          
-          {authError && <p style={{ color: '#b92732', margin: 0, fontSize: '14px' }}>{authError}</p>}
-          {authInfo && <p style={{ color: '#21846b', margin: 0, fontSize: '14px' }}>{authInfo}</p>}
 
-          <button type="submit" className="primary-action" style={{ marginTop: '10px' }}>
-            {isRegistering ? 'Cadastrar' : 'Entrar'}
-          </button>
-
-          {!isRegistering && (
+          {/* Method tabs */}
+          <div className="auth-method-tabs">
             <button
               type="button"
-              onClick={async () => {
-                setAuthError('')
-                setAuthInfo('')
-                const email = authEmail.trim()
-                if (!email) {
-                  setAuthError('Digite o e-mail antes de pedir o reset.')
-                  return
-                }
-                try {
-                  await sendPasswordResetEmail(auth, email)
-                  setAuthInfo('Enviamos um link de reset para ' + email + '. Confira a caixa de entrada (e spam).')
-                } catch (err) {
-                  setAuthError(friendlyAuthError(err))
-                }
-              }}
-              style={{ background: 'transparent', border: 'none', color: '#a99c8f', cursor: 'pointer', textDecoration: 'underline', fontSize: '13px' }}
+              className={`auth-method-tab${authTab === 'email' ? ' active' : ''}`}
+              onClick={() => { setAuthTab('email'); setAuthError(''); setAuthInfo('') }}
             >
-              Esqueci minha senha
+              <Mail size={14} /> E-mail
             </button>
-          )}
+            <button
+              type="button"
+              className={`auth-method-tab${authTab === 'social' ? ' active' : ''}`}
+              onClick={() => { setAuthTab('social'); setAuthError(''); setAuthInfo('') }}
+            >
+              <Users size={14} /> Alternativas
+            </button>
+          </div>
 
-          {googleDisabled ? null : (
-          <button
-            type="button"
-            className="answer-option"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
-            onClick={async () => {
-              setAuthError('')
-              setAuthInfo('')
-              if (Capacitor.isNativePlatform()) {
-                try {
-                  const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication')
-                  const result = await FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true })
-                  const idToken = result.credential?.idToken ?? null
-                  const accessToken = result.credential?.accessToken ?? null
-                  if (idToken || accessToken) {
-                    const credential = GoogleAuthProvider.credential(idToken, accessToken)
-                    await signInWithCredential(auth, credential)
-                    return
-                  }
-                  setAuthError('Google nao retornou token. Use e-mail/senha logo acima.')
-                  return
-                } catch (err) {
-                  const msg = googleNativeErrorMessage(err)
-                  setAuthError(msg)
-                  if (msg.includes('nao esta configurado')) {
-                    try { localStorage.setItem('redtail.googleConfigBroken', '1') } catch { /* ignore */ }
-                    setGoogleDisabled(true)
-                  }
-                  return
+          {/* Error / info messages */}
+          {authError && <div className="auth-error">{authError}</div>}
+          {authInfo && <div className="auth-info">{authInfo}</div>}
+
+          {/* === EMAIL TAB === */}
+          {authTab === 'email' && (
+            <form onSubmit={handleEmailSubmit}>
+              <div className="auth-field">
+                <label htmlFor="auth-email">E-mail</label>
+                <input
+                  id="auth-email"
+                  type="email"
+                  className="auth-input"
+                  placeholder="seu@email.com"
+                  value={authEmail}
+                  onChange={e => setAuthEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className="auth-field">
+                <label htmlFor="auth-password">Senha</label>
+                <input
+                  id="auth-password"
+                  type="password"
+                  className="auth-input"
+                  placeholder="••••••••"
+                  value={authPassword}
+                  onChange={e => setAuthPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  autoComplete={isRegistering ? 'new-password' : 'current-password'}
+                />
+              </div>
+
+              {!isRegistering && (
+                <div className="auth-forgot-row">
+                  <button type="button" className="auth-link-btn underline" onClick={handleForgotPassword}>
+                    Esqueci minha senha
+                  </button>
+                </div>
+              )}
+
+              <button type="submit" className="auth-btn-primary" disabled={authBusy}>
+                {authBusy
+                  ? <div className="auth-spinner" />
+                  : <>{isRegistering ? <Plus size={16} /> : <LogIn size={16} />} {isRegistering ? 'Cadastrar' : 'Entrar'}</>
                 }
-              }
-              const provider = new GoogleAuthProvider()
-              provider.addScope('email')
-              provider.addScope('profile')
-              try {
-                await signInWithPopup(auth, provider)
-              } catch (err: unknown) {
-                setAuthError(friendlyAuthError(err))
-              }
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-            Entrar com Google
-          </button>
+              </button>
+
+              <div className="auth-toggle-row">
+                <span>{isRegistering ? 'Já tem conta?' : 'Não tem conta?'}</span>
+                <button
+                  type="button"
+                  className="auth-link-btn underline"
+                  onClick={() => { setIsRegistering(v => !v); setAuthError(''); setAuthInfo('') }}
+                >
+                  {isRegistering ? 'Entrar' : 'Cadastrar'}
+                </button>
+              </div>
+            </form>
           )}
 
-          <button
-            type="button"
-            className="primary-action"
-            style={{ background: '#21846b', boxShadow: '0 10px 22px rgba(33,132,107,0.22)' }}
-            onClick={() => enterAsGuest(authEmail || undefined)}
-          >
-            Entrar como convidado (offline)
-          </button>
+          {/* === SOCIAL / ALTERNATIVES TAB === */}
+          {authTab === 'social' && (
+            <div className="auth-buttons-group">
+              {/* Google Sign-In */}
+              {!googleDisabled && (
+                <button
+                  type="button"
+                  className="auth-btn-social google-btn"
+                  onClick={handleGoogleLogin}
+                  disabled={authBusy}
+                >
+                  {authBusy ? <div className="auth-spinner" /> : <>{googleSvg} Entrar com Google</>}
+                </button>
+              )}
 
-          <p style={{ margin: 0, fontSize: '12px', color: '#a99c8f', textAlign: 'center' }}>
-            Modo convidado salva todo seu progresso localmente, sem precisar de senha nem confirmar email.
-          </p>
+              {googleDisabled && (
+                <div className="auth-config-badge">
+                  ⚠️ Google Sign-In indisponível neste APK (google-services.json precisa ser configurado no Firebase Console).
+                </div>
+              )}
 
-          <button
-            type="button"
-            onClick={() => {
-              setIsRegistering((value) => !value)
-              setAuthError('')
-              setAuthInfo('')
-            }}
-            style={{ background: 'transparent', border: 'none', color: '#a99c8f', cursor: 'pointer', textDecoration: 'underline' }}
-          >
-            {isRegistering ? 'Já tem conta? Entrar' : 'Não tem conta? Cadastrar'}
-          </button>
+              <div className="auth-divider"><span>ou</span></div>
 
-          {googleDisabled && (
-            <p style={{ margin: 0, fontSize: '11.5px', color: '#a99c8f', textAlign: 'center', lineHeight: 1.4 }}>
-              Login com Google esta desabilitado neste APK (google-services.json sem SHA-1 real do app). Use e-mail/senha.
-            </p>
+              {/* Anonymous Firebase login */}
+              <button
+                type="button"
+                className="auth-btn-social anon-btn"
+                onClick={handleAnonymousLogin}
+                disabled={authBusy}
+              >
+                <UserRound size={16} /> Entrar anonimamente (Firebase)
+              </button>
+
+              <div className="auth-divider"><span>ou</span></div>
+
+              {/* Local guest mode */}
+              <button
+                type="button"
+                className="auth-btn-social guest-btn"
+                onClick={() => enterAsGuest(authEmail || undefined)}
+              >
+                <ShieldCheck size={16} /> Modo convidado (offline)
+              </button>
+
+              {/* Info texts */}
+              <div className="auth-footer">
+                <p>
+                  <strong style={{ color: '#d4a04a' }}>Anônimo:</strong> cria conta Firebase sem dados pessoais. Progresso salvo na nuvem.
+                </p>
+                <p>
+                  <strong style={{ color: '#6ec9a8' }}>Convidado:</strong> sem conta, progresso salvo apenas neste dispositivo.
+                </p>
+              </div>
+            </div>
           )}
-        </form>
+        </div>
+
+        <div className="auth-watermark">紅尾學院</div>
       </div>
     )
   }

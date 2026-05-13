@@ -8,6 +8,7 @@ import {
   initializeAuth,
   reauthenticateWithCredential,
   reauthenticateWithPopup,
+  signInAnonymously,
 } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
@@ -103,4 +104,8 @@ export async function deleteCurrentAccount(reauth?: DeleteAccountReauth): Promis
   }
 
   await deleteUser(user)
+}
+
+export async function signInAnonymous() {
+  return signInAnonymously(auth)
 }
